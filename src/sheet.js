@@ -284,7 +284,8 @@ function renderInfo(doc) {
   return `<div class="info">${INFO_FIELDS.map(([label, key]) => {
     const value = infoValue(doc, key);
     const blankDate = key.endsWith("Date") && !value;
-    return `<div class="field"><span>${label}</span><span class="line${blankDate ? " date" : ""}">${blankDate ? "<i>/</i><i>/</i>" : `<b>${esc(value)}</b>`}</span></div>`;
+    // a printed value needs no writing line under it
+    return `<div class="field"><span>${label}</span><span class="line${blankDate ? " date" : ""}${value ? " is-filled" : ""}">${blankDate ? "<i>/</i><i>/</i>" : `<b>${esc(value)}</b>`}</span></div>`;
   }).join("")}</div>`;
 }
 

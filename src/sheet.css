@@ -144,6 +144,7 @@
   padding: 0 1mm 0.6mm;
   border-bottom: 0.35mm solid var(--rule-strong);
 }
+.sheet-page .field .line.is-filled { border-bottom-color: transparent; }
 .sheet-page .field .line b {
   min-width: 0;
   overflow: hidden;

@@ -411,8 +411,8 @@ function drawInfo(page, ts, fonts, doc, y) {
     const labelWidth = ts.line(label, { font: fonts.cairo700, size: 9, color: BLOOD, right, y: y + SHEET.trainee - (9 * 1.2) / PT / 2 });
     const lineRight = right - labelWidth - 2.2;
     const lineLeft = right - w;
-    fillRect(page, lineLeft, y + SHEET.trainee - 0.35, lineRight - lineLeft, 0.35, RULE_STRONG);
     const value = infoValue(doc, key);
+    if (!value) fillRect(page, lineLeft, y + SHEET.trainee - 0.35, lineRight - lineLeft, 0.35, RULE_STRONG);
     if (key.endsWith("Date") && !value) {
       const span = lineRight - lineLeft;
       [1 / 3, 2 / 3].forEach((at) => ts.line("/", { font: fonts.cairo400, size: 10, color: RULE, center: lineLeft + span * at, baseline: y + SHEET.trainee - 0.9 }));
