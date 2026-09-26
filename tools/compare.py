@@ -10,7 +10,8 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parent.parent
 APP = (ROOT / "dist" / "Popeye_Gym_Sheet_Builder.html").as_uri()
 PROGRAM = sys.argv[1] if len(sys.argv) > 1 else "ppl"
-OUT = ROOT / "tools" / "shots" / ("compare" if PROGRAM == "ppl" else f"compare-{PROGRAM}")
+STRESS = int(sys.argv[2]) if len(sys.argv) > 2 else 0  # extra exercises added to page 1
+OUT = ROOT / "tools" / "shots" / (("compare" if PROGRAM == "ppl" else f"compare-{PROGRAM}") + ("-stress" if STRESS else ""))
 OUT.mkdir(parents=True, exist_ok=True)
 DPI = 110
 
@@ -28,6 +29,12 @@ def run():
         page.screenshot(path=str(OUT / "00-start.png"))
         page.locator(f'.start-card[data-key="{PROGRAM}"]').click()
         page.wait_for_timeout(700)
+        if STRESS:
+            # overload the first page so it splits across sheets
+            for _ in range(STRESS):
+                page.locator('#editor [data-action=item-add][data-kind=strength][data-into=""]').click()
+            page.locator('#editor [data-action=item-add][data-kind=circuit][data-into=""]').click()
+            page.wait_for_timeout(600)
         page.screenshot(path=str(OUT / "01-editor.png"))
 
         # HTML render of every page at PDF size via the print root

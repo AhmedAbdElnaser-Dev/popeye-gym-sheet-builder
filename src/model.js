@@ -4,6 +4,9 @@ const MIN_DAYS = 1;
 const MAX_DAYS = 14;
 const MAX_ROUNDS = 12;
 const MAX_PAGES = 12;
+const MIN_ROW_HEIGHT = 8;
+const MAX_ROW_HEIGHT = 20;
+const DEFAULT_ROW_HEIGHT = 12;
 
 const FIELD_LIBRARY = {
   sets:    { abbr: "م",     name: "مجموعات",        weight: 0.8 },
@@ -88,6 +91,7 @@ function newPage(overrides = {}) {
     notes: true,
     notesTitle: DEFAULT_NOTES_TITLE,
     showTrainee: false,
+    minRowHeight: DEFAULT_ROW_HEIGHT,
     items: [],
     ...overrides,
   };
@@ -196,6 +200,7 @@ function normalizePage(raw, seen) {
     notes: source.notes !== false,
     notesTitle: text(source.notesTitle ?? DEFAULT_NOTES_TITLE, TEXT_LIMIT.label),
     showTrainee: Boolean(source.showTrainee),
+    minRowHeight: clampInt(source.minRowHeight, MIN_ROW_HEIGHT, MAX_ROW_HEIGHT, DEFAULT_ROW_HEIGHT),
     items: Array.isArray(source.items) ? source.items.map((item) => normalizeItem(item, seen)) : [],
   });
 }

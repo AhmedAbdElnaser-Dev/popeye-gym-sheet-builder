@@ -310,6 +310,17 @@ svg { flex: none; }
 }
 .tab.is-active .tab__num { background: var(--red); color: #fff; }
 .tab__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tab__sheets {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--red-soft);
+  color: var(--red-ink);
+  font-size: 11px;
+  font-weight: 800;
+  direction: ltr;
+}
+.tab.is-active .tab__sheets { background: rgb(255 255 255 / 0.16); color: #fff; }
 .tab__warn { display: inline-flex; color: #b25e00; }
 .tab.is-active .tab__warn { color: #ffb84d; }
 .tab__warn svg { width: 15px; height: 15px; }
@@ -703,6 +714,7 @@ details[open] > .panel__head { border-bottom: 1px solid var(--line); border-radi
   font-size: 12px;
 }
 .pv.is-active .pv__num { background: var(--red); color: #fff; }
+.pv__part { flex: none; padding: 1px 8px; border-radius: 999px; background: rgb(255 255 255 / 0.12); font-size: 11.5px; }
 .pv__warn { display: inline-flex; align-items: center; gap: 4px; margin-inline-start: auto; color: #ffc66e; font-size: 12px; font-weight: 700; }
 .pv__warn svg { width: 15px; height: 15px; }
 .pv__paper {

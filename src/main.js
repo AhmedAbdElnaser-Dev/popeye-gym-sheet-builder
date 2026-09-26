@@ -125,6 +125,9 @@ async function openDownloadDialog() {
   const warnings = crowded.length
     ? `<ul class="warns">${crowded.map((page) => `<li>${ICONS.warn}<span>صفحة «${esc(page.title)}»: ${esc(layoutPage(store.doc, page).warnings[0])}</span></li>`).join("")}</ul>`
     : "";
+  const total = paginateDoc(store.doc).length;
+  const spread = store.doc.pages.filter((page) => layoutPage(store.doc, page).sheetCount > 1);
+  const sheetsNote = `<p class="dlg__hint">الملف: ${esc(sheetsLabel(total))}${spread.length ? ` — ${spread.map((page) => `«${esc(page.title)}» على ${esc(sheetsLabel(layoutPage(store.doc, page).sheetCount))}`).join("، ")}` : ""}.</p>`;
   const result = await openDialog({
     title: "تنزيل PDF",
     body: `
@@ -132,6 +135,7 @@ async function openDownloadDialog() {
         <span class="file-name"><input class="in" name="filename" value="${esc(suggestedFilename())}" maxlength="${FILENAME_MAX}" autocomplete="off" spellcheck="false"><span class="file-name__ext">.pdf</span></span>
       </label>
       ${warnings}
+      ${sheetsNote}
       <p class="dlg__hint">الملف جاهز للطباعة، وجواه بيانات البرنامج — تقدر تفتحه تاني من «فتح PDF» وتكمل تعديل.</p>`,
     actions: [
       { value: "cancel", label: "إلغاء" },

@@ -20,15 +20,16 @@ function renderPreview() {
     return;
   }
   const activeId = activePage().id;
-  root.innerHTML = `<div class="pv-list">${store.doc.pages.map((page, index) => {
-    const { html, layout } = renderPage(store.doc, page, index);
+  root.innerHTML = `<div class="pv-list">${paginateDoc(store.doc).map((sheet) => {
+    const { page, layout } = sheet;
     const warn = layout.warnings.length
       ? `<span class="pv__warn" title="${esc(layout.warnings.join("\n"))}">${ICONS.warn}<span>${layout.warnings.length === 1 ? "تنبيه" : `${layout.warnings.length} تنبيهات`}</span></span>`
       : "";
+    const part = sheet.sheetCount > 1 ? `<span class="pv__part">ورقة ${sheet.sheetIndex + 1} من ${sheet.sheetCount}</span>` : "";
     return `<figure class="pv${page.id === activeId ? " is-active" : ""}" data-page-id="${page.id}">
-      <figcaption class="pv__cap"><span class="pv__num">${index + 1}</span><b>${esc(page.title) || "بدون عنوان"}</b>${warn}</figcaption>
-      <div class="pv__paper" role="button" tabindex="0" data-action="page-select" data-page-id="${page.id}" aria-label="تعديل صفحة ${index + 1}">
-        <div class="pv__scale">${html}</div>
+      <figcaption class="pv__cap"><span class="pv__num">${sheet.pageIndex + 1}</span><b>${esc(page.title) || "بدون عنوان"}</b>${part}${warn}</figcaption>
+      <div class="pv__paper" role="button" tabindex="0" data-action="page-select" data-page-id="${page.id}" aria-label="تعديل صفحة ${sheet.pageIndex + 1}">
+        <div class="pv__scale">${renderSheet(store.doc, sheet)}</div>
       </div>
     </figure>`;
   }).join("")}</div>`;
@@ -46,8 +47,7 @@ function fitPreview() {
 }
 
 function fillPrintRoot() {
-  document.getElementById("print-root").innerHTML = store.doc.pages
-    .map((page, index) => renderPage(store.doc, page, index).html).join("");
+  document.getElementById("print-root").innerHTML = paginateDoc(store.doc).map((sheet) => renderSheet(store.doc, sheet)).join("");
 }
 
 function clearPrintRoot() {

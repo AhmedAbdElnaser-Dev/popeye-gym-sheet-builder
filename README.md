@@ -22,7 +22,7 @@ Work is kept per browser tab (`sessionStorage`): it survives a reload, not closi
 - **Page:** title (a `/` renders as the red separator), chips, column count (1–14) and unit (يوم / أسبوع / جلسة / custom), base fields, optional notes box and trainee strip.
 - **Exercise row:** logs one of four ways — `default` (page fields), `fields` (its own, e.g. cardio د · كم), `tick` (one checkbox per column), `blank` (free cell).
 - **Group:** superset / circuit / section; `rounds > 0` adds a rounds row; `letters` numbers rows A1, A2 …
-- **Row heights** auto-fit the page; the editor warns when a page is too crowded or a cell gets narrower than 5.5 mm.
+- **Row heights** grow to fill the sheet. Each page has a **minimum row height** (8–20 mm, default 12); when the rows don't fit at that minimum, the page continues on further sheets automatically — same header, numbering carries on, a spilled group gets a "تابع" head, chips show «ورقة 2 من 3». The editor warns when a cell gets narrower than 5.5 mm.
 
 ## The PDF
 

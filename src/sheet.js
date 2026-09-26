@@ -1,5 +1,5 @@
 // ---------- sheet: shared layout math + the HTML renderer (screen preview) ----------
-// pdf.js draws the same layout into the downloaded file; keep the two in step.
+// A page (one workout) prints on one or more sheets; pdf.js draws the same sheets. Keep the two in step.
 
 // all sizes in mm, matching sheet.css
 const SHEET = {
@@ -25,7 +25,7 @@ const SHEET = {
   exerciseCol: 56,
 };
 const ROW_WEIGHT = { exercise: 1, compact: 0.72, groupHead: 0.52, rounds: 0.85 };
-const ROW_HEIGHT = { min: 8, max: 16.5, maxWithoutNotes: 20, groupHeadMin: 6.5, twoLineMin: 9.4 };
+const ROW_HEIGHT = { max: 16.5, maxWithoutNotes: 20, groupHeadMin: 6.5, twoLineMin: 9.4 };
 const MIN_CELL_MM = 5.5;
 const DOT = { size: 3.4, gap: 1.2, min: 2.2 };
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -43,7 +43,7 @@ function pad(n) {
 function resolveFields(doc, keys) {
   return keys.map((key) => {
     const field = getField(doc, key);
-    return field && { key, ...field };
+    return field && { key, ...field, weight: field.weight > 0 ? field.weight : 1 };
   }).filter(Boolean);
 }
 
@@ -53,12 +53,24 @@ function roundsLabel(n) {
   return `${n} ${n <= 10 ? "جولات" : "جولة"}`;
 }
 
+function sheetsLabel(n) {
+  if (n === 1) return "ورقة واحدة";
+  if (n === 2) return "ورقتين";
+  return `${n} ${n <= 10 ? "ورقات" : "ورقة"}`;
+}
+
 function titleParts(page) {
   return page.title.split("/").map((part) => part.trim()).filter(Boolean);
 }
 
 function bandChips(page) {
   return [...(page.showDaysChip ? [formatDayCount(page)] : []), ...page.chips.map((chip) => chip.trim()).filter(Boolean)];
+}
+
+function sheetChips(sheet) {
+  const chips = bandChips(sheet.page);
+  if (sheet.sheetCount > 1) chips.push(`ورقة ${sheet.sheetIndex + 1} من ${sheet.sheetCount}`);
+  return chips;
 }
 
 function flattenRows(page) {
@@ -77,11 +89,12 @@ function flattenRows(page) {
         kind: "exercise",
         exercise,
         group: item,
+        letter,
         badge: letter ? `${letter}${i + 1}` : pad(++number),
         last: !item.rounds && i === item.items.length - 1,
       });
     });
-    if (item.rounds > 0) rows.push({ kind: "rounds", group: item, last: true });
+    if (item.rounds > 0) rows.push({ kind: "rounds", group: item, letter, last: true });
   }
   return rows;
 }
@@ -97,19 +110,24 @@ function hasSecondLine(row) {
   return row.kind === "exercise" && Boolean(row.exercise.detail.trim() || row.exercise.target.trim());
 }
 
-/** Rows never shrink below what their text needs, whatever the page's row height says. */
-function rowHeightMm(layout, row) {
-  const scaled = layout.rowHeight * rowWeight(row);
+/** The least a row may take: the page's minimum scaled by row kind, never below what its text needs. */
+function rowFloor(page, row) {
+  const scaled = page.minRowHeight * rowWeight(row);
   if (row.kind === "groupHead") return Math.max(ROW_HEIGHT.groupHeadMin, scaled);
   return hasSecondLine(row) ? Math.max(ROW_HEIGHT.twoLineMin, scaled) : scaled;
 }
 
-function bodyHeightAt(rows, rowHeight) {
-  return rows.reduce((sum, row) => sum + rowHeightMm({ rowHeight }, row), 0);
+function rowHeightMm(layout, row) {
+  return Math.max(rowFloor(layout.page, row), layout.rowHeight * rowWeight(row));
 }
 
 function rowFields(doc, exercise) {
   return exercise.mode === "fields" ? resolveFields(doc, exercise.fields) : [];
+}
+
+function groupHeadLabel(row) {
+  const label = [groupTitle(row.group), row.letter].filter(Boolean).join(" ");
+  return row.continued ? `${label} — تابع` : label;
 }
 
 function groupHeadMeta(group) {
@@ -122,29 +140,71 @@ function cellWidths(dayWidth, fields) {
   return Math.min(...fields.map((field) => (dayWidth * field.weight) / total));
 }
 
-/** Everything the renderers and the editor need to know about how a page fits on paper. */
-function layoutPage(doc, page) {
+/** Height of everything on a sheet that is not a body row. */
+function fixedHeight(page, hasSubHead, first) {
+  const trainee = first && page.showTrainee;
+  const blocks = 3 + (page.notes ? 1 : 0) + (trainee ? 1 : 0);
+  return SHEET.band + SHEET.dayHead + (hasSubHead ? SHEET.subHead : 0) + SHEET.tableBorder * 2 + SHEET.footer
+    + (blocks - 1) * SHEET.gap + (trainee ? SHEET.trainee : 0) + (page.notes ? SHEET.notesMin : 0);
+}
+
+/**
+ * Cuts the rows into sheets. A group head never ends a sheet, a rounds tracker never starts one
+ * on its own (it takes the group's last exercise along), and a group that spills gets a "تابع" head.
+ */
+function splitRows(page, rows, hasSubHead) {
+  const sheets = [];
+  let current = [];
+  let used = 0;
+  let available = SHEET.innerHeight - fixedHeight(page, hasSubHead, true);
+
+  for (const row of rows) {
+    const height = rowFloor(page, row);
+    if (current.length && used + height > available + 0.01) {
+      const carried = [];
+      const previous = current.at(-1);
+      if (row.kind === "rounds" && previous.kind === "exercise" && previous.group === row.group) carried.push(current.pop());
+      const orphan = current.at(-1)?.kind === "groupHead" ? current.pop() : null;
+      if (current.length) sheets.push(current);
+      current = [];
+      used = 0;
+      available = SHEET.innerHeight - fixedHeight(page, hasSubHead, false);
+      const lead = carried[0] || row;
+      const head = orphan || (lead.group && lead.kind !== "groupHead" ? { kind: "groupHead", group: lead.group, letter: lead.letter, continued: true } : null);
+      for (const opener of [head, ...carried].filter(Boolean)) {
+        current.push(opener);
+        used += rowFloor(page, opener);
+      }
+    }
+    current.push(row);
+    used += height;
+  }
+  if (current.length || !sheets.length) sheets.push(current);
+  return sheets;
+}
+
+function bodyHeightAt(page, rows, rowHeight) {
+  return rows.reduce((sum, row) => sum + rowHeightMm({ page, rowHeight }, row), 0);
+}
+
+function layoutSheet(doc, page, rows, first) {
   const pageColumns = resolveFields(doc, page.fields);
   const columns = pageColumns.length ? pageColumns : [PLACEHOLDER_COLUMN];
   const hasSubHead = pageColumns.length > 0;
-  const rows = flattenRows(page);
   const units = rows.reduce((sum, row) => sum + rowWeight(row), 0);
+  const available = SHEET.innerHeight - fixedHeight(page, hasSubHead, first);
+  const ceiling = Math.max(page.minRowHeight, page.notes ? ROW_HEIGHT.max : ROW_HEIGHT.maxWithoutNotes);
 
-  const blocks = 3 + (page.notes ? 1 : 0) + (page.showTrainee ? 1 : 0);
-  const fixed = SHEET.band + SHEET.dayHead + (hasSubHead ? SHEET.subHead : 0) + SHEET.tableBorder * 2 + SHEET.footer
-    + (blocks - 1) * SHEET.gap + (page.showTrainee ? SHEET.trainee : 0) + (page.notes ? SHEET.notesMin : 0);
-  const available = SHEET.innerHeight - fixed;
-  const ceiling = page.notes ? ROW_HEIGHT.max : ROW_HEIGHT.maxWithoutNotes;
-  let rowHeight = Math.max(ROW_HEIGHT.min, Math.min(ceiling, units ? available / units : ROW_HEIGHT.max));
-  // rows pinned at their minimum take space from the others; settle in a couple of passes
-  for (let pass = 0; pass < 3 && bodyHeightAt(rows, rowHeight) > available && rowHeight > ROW_HEIGHT.min; pass++) {
-    const pinned = rows.filter((row) => rowHeightMm({ rowHeight }, row) > rowHeight * rowWeight(row));
-    const pinnedHeight = pinned.reduce((sum, row) => sum + rowHeightMm({ rowHeight }, row), 0);
+  // rows grow to fill the sheet, between the page's minimum and the ceiling
+  let rowHeight = Math.max(page.minRowHeight, Math.min(ceiling, units ? available / units : ceiling));
+  // rows pinned at their floor take space from the others; settle in a couple of passes
+  for (let pass = 0; pass < 3 && bodyHeightAt(page, rows, rowHeight) > available && rowHeight > page.minRowHeight; pass++) {
+    const pinned = rows.filter((row) => rowFloor(page, row) > rowHeight * rowWeight(row));
+    const pinnedHeight = pinned.reduce((sum, row) => sum + rowFloor(page, row), 0);
     const freeUnits = rows.filter((row) => !pinned.includes(row)).reduce((sum, row) => sum + rowWeight(row), 0);
-    rowHeight = Math.max(ROW_HEIGHT.min, Math.min(rowHeight, freeUnits ? (available - pinnedHeight) / freeUnits : rowHeight));
+    rowHeight = Math.max(page.minRowHeight, Math.min(rowHeight, freeUnits ? (available - pinnedHeight) / freeUnits : rowHeight));
   }
-  const bodyHeight = bodyHeightAt(rows, rowHeight);
-  const overflow = bodyHeight > available + 0.05;
+  const bodyHeight = bodyHeightAt(page, rows, rowHeight);
 
   const dayWidth = (SHEET.innerWidth - SHEET.exerciseCol) / page.days;
   const narrowest = Math.min(
@@ -152,19 +212,43 @@ function layoutPage(doc, page) {
     ...rows.filter((row) => row.kind === "exercise" && row.exercise.mode === "fields")
       .map((row) => cellWidths(dayWidth, rowFields(doc, row.exercise))),
   );
-
   const warnings = [];
-  if (overflow) warnings.push("الصفوف كتير على صفحة واحدة — انقل جزء منها لصفحة جديدة أو اقفل الملاحظات.");
   if (narrowest < MIN_CELL_MM) warnings.push(`أضيق خانة ${narrowest.toFixed(1)} مم بس — قلل الأيام أو عدد الخانات عشان الكتابة تبقى مريحة.`);
 
   const headHeight = SHEET.dayHead + (hasSubHead ? SHEET.subHead : 0);
   const tableHeight = headHeight + bodyHeight + SHEET.tableBorder * 2;
-
-  return { columns, hasSubHead, rows, rowHeight, dayWidth, narrowest, headHeight, tableHeight, overflow, warnings };
+  return { page, first, columns, hasSubHead, rows, rowHeight, dayWidth, narrowest, headHeight, tableHeight, warnings };
 }
 
-/** Legend entries for the footer: every field used on the page, then tick/dot glyphs when present. */
-function legendItems(doc, page, layout) {
+/** Everything the renderers and the editor need to know about how a page lands on paper. */
+function layoutPage(doc, page) {
+  const rows = flattenRows(page);
+  const hasSubHead = resolveFields(doc, page.fields).length > 0;
+  const sheets = splitRows(page, rows, hasSubHead).map((chunk, index) => layoutSheet(doc, page, chunk, index === 0));
+  return {
+    rows,
+    sheets,
+    sheetCount: sheets.length,
+    dayWidth: sheets[0].dayWidth,
+    narrowest: Math.min(...sheets.map((sheet) => sheet.narrowest)),
+    rowHeights: sheets.map((sheet) => sheet.rowHeight),
+    warnings: [...new Set(sheets.flatMap((sheet) => sheet.warnings))],
+  };
+}
+
+/** The printed sheets of the whole program, numbered across pages. */
+function paginateDoc(doc) {
+  const sheets = [];
+  doc.pages.forEach((page, pageIndex) => {
+    const { sheets: layouts } = layoutPage(doc, page);
+    layouts.forEach((layout, sheetIndex) => sheets.push({ page, pageIndex, sheetIndex, sheetCount: layouts.length, layout, first: sheetIndex === 0 }));
+  });
+  sheets.forEach((sheet, index) => Object.assign(sheet, { number: index + 1, total: sheets.length }));
+  return sheets;
+}
+
+/** Legend entries for the footer: every field used on the sheet, then tick/dot glyphs when present. */
+function legendItems(doc, layout) {
   const seen = new Map();
   const add = (field) => field.abbr && !seen.has(field.key) && seen.set(field.key, field);
   layout.columns.forEach(add);
@@ -175,11 +259,11 @@ function legendItems(doc, page, layout) {
   return items;
 }
 
-// ---------- HTML page parts ----------
+// ---------- HTML sheet parts ----------
 
-function renderBand(page) {
-  const title = titleParts(page).map((part) => `<span class="band__word">${esc(part)}</span>`).join('<span class="sep"></span>');
-  const chips = bandChips(page);
+function renderBand(sheet) {
+  const title = titleParts(sheet.page).map((part) => `<span class="band__word">${esc(part)}</span>`).join('<span class="sep"></span>');
+  const chips = sheetChips(sheet);
   return `
     <header class="band">
       <div class="band__text">
@@ -242,10 +326,8 @@ function renderDayCells(doc, page, layout, exercise) {
 }
 
 function renderGroupHead(page, layout, row, height) {
-  const { group } = row;
-  const label = [groupTitle(group), row.letter].filter(Boolean).join(" ");
   return `<tr class="grp-head in-grp" style="height:${height}mm"><td colspan="${1 + page.days * layout.columns.length}">
-    <div class="grp"><b>${esc(label)}</b>${groupHeadMeta(group).map((text) => `<span>${esc(text)}</span>`).join("")}</div></td></tr>`;
+    <div class="grp"><b>${esc(groupHeadLabel(row))}</b>${groupHeadMeta(row.group).map((text) => `<span>${esc(text)}</span>`).join("")}</div></td></tr>`;
 }
 
 function dotSize(layout, rounds) {
@@ -278,19 +360,19 @@ function renderBody(doc, page, layout) {
   }).join("");
 }
 
-function renderLegend(doc, page, layout) {
-  return legendItems(doc, page, layout).map((item) => {
+function renderLegend(doc, layout) {
+  return legendItems(doc, layout).map((item) => {
     if (item.kind === "field") return `<b>${esc(item.abbr)}</b> ${esc(item.name)}`;
     return `<span class="${item.kind}"></span> ${esc(item.name)}`;
   }).join(" <i></i> ");
 }
 
-function renderPage(doc, page, index) {
-  const layout = layoutPage(doc, page);
-  const html = `
-  <section class="sheet-page" data-page-id="${page.id}">
-    ${renderBand(page)}
-    ${page.showTrainee ? renderTrainee() : ""}
+function renderSheet(doc, sheet) {
+  const { page, layout } = sheet;
+  return `
+  <section class="sheet-page" data-page-id="${page.id}" data-sheet="${sheet.sheetIndex}">
+    ${renderBand(sheet)}
+    ${sheet.first && page.showTrainee ? renderTrainee() : ""}
     <div class="table-wrap"><table class="log">
       ${renderColgroup(page, layout)}
       ${renderHead(page, layout)}
@@ -298,9 +380,8 @@ function renderPage(doc, page, index) {
     </table></div>
     ${page.notes ? `<section class="notes"><h2><span>${esc(page.notesTitle)}</span></h2><div class="notes__lines">${"<i></i>".repeat(30)}</div></section>` : ""}
     <footer class="foot">
-      <span class="legend">${renderLegend(doc, page, layout)}</span>
-      <span class="foot__brand">POPEYE GYM <i></i> FACTORY OF LIONS <i></i> ${index + 1} / ${doc.pages.length}</span>
+      <span class="legend">${renderLegend(doc, layout)}</span>
+      <span class="foot__brand">POPEYE GYM <i></i> FACTORY OF LIONS <i></i> ${sheet.number} / ${sheet.total}</span>
     </footer>
   </section>`;
-  return { html, layout };
 }

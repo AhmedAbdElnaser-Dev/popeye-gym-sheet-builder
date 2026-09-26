@@ -328,7 +328,7 @@ const CHIP_SIZE = 8.5;
 const CHIP_H = CHIP_SIZE / PT + 1.1 + 1.3 + 0.5;
 const CHIP_GAP = 1.6;
 
-function drawBand(page, ts, fonts, pageData, band) {
+function drawBand(page, ts, fonts, pageData, band, chips) {
   const x = SHEET.padX;
   const y = SHEET.padY;
   const w = SHEET.innerWidth;
@@ -343,7 +343,6 @@ function drawBand(page, ts, fonts, pageData, band) {
   const maxWidth = w - SHEET.bandPadStart - SHEET.bandGap - bannerWidth;
 
   const parts = titleParts(pageData);
-  const chips = bandChips(pageData);
   const chipLines = wrapChips(ts, fonts, chips, maxWidth);
   // like the CSS flex row: words shrink in proportion and get an ellipsis when the title is too long
   const natural = parts.map((part) => ts.width(part, fonts.lalezar, TITLE_SIZE));
@@ -574,7 +573,7 @@ function drawExerciseRow(page, ts, fonts, doc, pageData, layout, row, geo) {
 
 function drawGroupHead(page, ts, fonts, row, right, y, rowH) {
   const centerY = y + rowH / 2;
-  const label = [groupTitle(row.group), row.letter].filter(Boolean).join(" ");
+  const label = groupHeadLabel(row);
   let cursor = right - 4.5;
   cursor -= ts.line(label, { font: fonts.lalezar, size: 11, color: BLOOD, right: cursor, y: centerY + 0.3, maxWidth: SHEET.innerWidth * 0.4 }) + 2;
   groupHeadMeta(row.group).forEach((text) => {
@@ -631,13 +630,13 @@ function drawNotes(page, ts, fonts, pageData, top, height) {
   for (let i = 1; i <= count; i++) fillRect(page, x + 4, linesTop + i * SHEET.notesLine - 0.35, w - 8, 0.35, RULE);
 }
 
-function drawFooter(page, ts, fonts, doc, pageData, layout, index) {
+function drawFooter(page, ts, fonts, doc, sheet) {
   const centerY = SHEET.pageHeight - SHEET.padY - 1.6;
   const size = 7.5;
   const dot = (cx) => fillPath(page, circlePath(cx, centerY, 0.5), RED);
 
   let cursor = SHEET.padX + SHEET.innerWidth - 1;
-  legendItems(doc, pageData, layout).forEach((item, i) => {
+  legendItems(doc, sheet.layout).forEach((item, i) => {
     if (i) {
       dot(cursor - 2.6);
       cursor -= 6.2;
@@ -655,7 +654,7 @@ function drawFooter(page, ts, fonts, doc, pageData, layout, index) {
   });
 
   let x = SHEET.padX + 1;
-  ["POPEYE GYM", "FACTORY OF LIONS", `${index + 1} / ${doc.pages.length}`].forEach((text, i) => {
+  ["POPEYE GYM", "FACTORY OF LIONS", `${sheet.number} / ${sheet.total}`].forEach((text, i) => {
     if (i) {
       dot(x + 3.5);
       x += 7;
@@ -664,15 +663,15 @@ function drawFooter(page, ts, fonts, doc, pageData, layout, index) {
   });
 }
 
-function drawSheet(page, ctx, pageData, index) {
+function drawSheet(page, ctx, sheet) {
   const { doc, fonts, band } = ctx;
+  const { page: pageData, layout } = sheet;
   const ts = new Typesetter(page, fonts);
-  const layout = layoutPage(doc, pageData);
   fillRect(page, 0, 0, SHEET.pageWidth, SHEET.pageHeight, WHITE);
 
-  drawBand(page, ts, fonts, pageData, band);
+  drawBand(page, ts, fonts, pageData, band, sheetChips(sheet));
   let y = SHEET.padY + SHEET.band + SHEET.gap;
-  if (pageData.showTrainee) {
+  if (sheet.first && pageData.showTrainee) {
     drawTrainee(page, ts, fonts, y);
     y += SHEET.trainee + SHEET.gap;
   }
@@ -682,7 +681,7 @@ function drawSheet(page, ctx, pageData, index) {
   const footerTop = SHEET.pageHeight - SHEET.padY - 3.2;
   const notesHeight = footerTop - SHEET.gap - y;
   if (pageData.notes && notesHeight >= 16) drawNotes(page, ts, fonts, pageData, y, notesHeight);
-  drawFooter(page, ts, fonts, doc, pageData, layout, index);
+  drawFooter(page, ts, fonts, doc, sheet);
 }
 
 // ---------- program payload inside the PDF ----------
@@ -800,7 +799,7 @@ async function generateProgramPdf(doc, { now = new Date() } = {}) {
   const fonts = await embedFonts(pdf);
   const band = await bandBackground(pdf);
   const ctx = { doc, fonts, band };
-  doc.pages.forEach((pageData, index) => drawSheet(pdf.addPage([PAGE_PT.w, PAGE_PT.h]), ctx, pageData, index));
+  paginateDoc(doc).forEach((sheet) => drawSheet(pdf.addPage([PAGE_PT.w, PAGE_PT.h]), ctx, sheet));
 
   const title = doc.name.trim() || "برنامج تمرين";
   pdf.setTitle(`${title} — Popeye Gym`);

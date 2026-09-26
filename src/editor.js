@@ -73,10 +73,12 @@ function renderStart() {
 function renderTabs() {
   const tabs = store.doc.pages.map((page, index) => {
     const selected = page.id === store.activePageId;
-    const warned = layoutPage(store.doc, page).warnings.length > 0;
+    const layout = layoutPage(store.doc, page);
+    const warned = layout.warnings.length > 0;
+    const sheets = layout.sheetCount > 1 ? `<span class="tab__sheets" title="بتتطبع على ${esc(sheetsLabel(layout.sheetCount))}">×${layout.sheetCount}</span>` : "";
     return `<button type="button" class="tab${selected ? " is-active" : ""}"${selected ? ' aria-current="true"' : ""}
       data-action="page-select" data-page-id="${page.id}" data-focus="tab:${page.id}" title="${esc(page.title)}">
-      <span class="tab__num">${index + 1}</span><span class="tab__title" data-tab-title="${page.id}">${esc(page.title) || "بدون عنوان"}</span>
+      <span class="tab__num">${index + 1}</span><span class="tab__title" data-tab-title="${page.id}">${esc(page.title) || "بدون عنوان"}</span>${sheets}
       ${warned ? `<span class="tab__warn" role="img" aria-label="في تنبيه على الصفحة دي" title="في تنبيه على الصفحة دي">${ICONS.warn}</span>` : ""}</button>`;
   }).join("");
   return `<div class="tabs-bar">
@@ -92,7 +94,10 @@ function renderSettings(page, layout) {
   const pageIndex = store.doc.pages.indexOf(page);
   const pageCount = store.doc.pages.length;
   const unit = dayUnitOf(page);
-  const summary = [formatDayCount(page), layout.hasSubHead ? layout.columns.map((column) => column.abbr).join(" · ") : "من غير خانات"];
+  const firstSheet = layout.sheets[0];
+  const summary = [formatDayCount(page), firstSheet.hasSubHead ? firstSheet.columns.map((column) => column.abbr).join(" · ") : "من غير خانات"];
+  if (layout.sheetCount > 1) summary.push(sheetsLabel(layout.sheetCount));
+  const rowRange = [...new Set(layout.rowHeights.map((h) => h.toFixed(1)))].sort((a, b) => a - b);
 
   return `<details class="panel" data-panel="settings"${ui.settingsOpen ? " open" : ""}>
     <summary class="panel__head">
@@ -142,6 +147,14 @@ function renderSettings(page, layout) {
       </div>
 
       <div class="fld">
+        <span class="fld__label">أقل ارتفاع للصف <small>(مم)</small></span>
+        <div class="inline">
+          ${stepper({ scope: "page", prop: "minRowHeight", value: page.minRowHeight, min: MIN_ROW_HEIGHT, max: MAX_ROW_HEIGHT, label: "أقل ارتفاع للصف بالمليمتر" })}
+          <span class="fld__hint">لو التمارين ما لحقتش، الصفحة بتكمل على ورقة تانية لوحدها بنفس العنوان.</span>
+        </div>
+      </div>
+
+      <div class="fld">
         <span class="fld__label">أجزاء الصفحة</span>
         <div class="toggles">
           <label class="check"><input type="checkbox" data-scope="page" data-prop="notes"${page.notes ? " checked" : ""}><span>مربع الملاحظات</span></label>
@@ -153,7 +166,8 @@ function renderSettings(page, layout) {
       <div class="metrics" aria-live="polite">
         <span>عرض ${esc(unit.head)}: <b>${layout.dayWidth.toFixed(1)} مم</b></span>
         <span>أضيق خانة: <b>${layout.narrowest.toFixed(1)} مم</b></span>
-        <span>ارتفاع الصف: <b>${layout.rowHeight.toFixed(1)} مم</b></span>
+        <span>ارتفاع الصف: <b>${rowRange.join("–")} مم</b></span>
+        <span>الطباعة: <b>${esc(sheetsLabel(layout.sheetCount))}</b></span>
       </div>
       ${layout.warnings.length ? `<ul class="warns">${layout.warnings.map((warning) => `<li>${ICONS.warn}<span>${esc(warning)}</span></li>`).join("")}</ul>` : ""}
 
@@ -334,8 +348,10 @@ function switchGroupKind(group, kind) {
   if (kind !== "circuit") group.rounds = 0;
 }
 
+const NUMBER_LIMITS = { days: [MIN_DAYS, MAX_DAYS], rounds: [0, MAX_ROUNDS], minRowHeight: [MIN_ROW_HEIGHT, MAX_ROW_HEIGHT] };
+
 function setNumber(scope, id, prop, raw) {
-  const [min, max] = prop === "days" ? [MIN_DAYS, MAX_DAYS] : [0, MAX_ROUNDS];
+  const [min, max] = NUMBER_LIMITS[prop];
   const target = targetOf(activePage(), scope, id);
   const value = String(raw).trim() === "" ? target[prop] : clampInt(raw, min, max, target[prop]);
   if (value === target[prop]) {
