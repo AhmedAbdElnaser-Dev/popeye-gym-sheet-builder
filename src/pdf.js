@@ -412,12 +412,13 @@ function drawInfo(page, ts, fonts, doc, y) {
     const lineRight = right - labelWidth - 2.2;
     const lineLeft = right - w;
     fillRect(page, lineLeft, y + SHEET.trainee - 0.35, lineRight - lineLeft, 0.35, RULE_STRONG);
-    if (key === "date") {
+    const value = infoValue(doc, key);
+    if (key.endsWith("Date") && !value) {
       const span = lineRight - lineLeft;
       [1 / 3, 2 / 3].forEach((at) => ts.line("/", { font: fonts.cairo400, size: 10, color: RULE, center: lineLeft + span * at, baseline: y + SHEET.trainee - 0.9 }));
     } else {
-      // the typed name sits on the line, like handwriting would
-      ts.line(doc[key].trim(), { font: fonts.cairo700, size: 10, color: INK, right: lineRight - 1, baseline: y + SHEET.trainee - 1.1, maxWidth: lineRight - lineLeft - 2 });
+      // the typed value sits on the line, like handwriting would
+      ts.line(value, { font: fonts.cairo700, size: 10, color: INK, right: lineRight - 1, baseline: y + SHEET.trainee - 1.1, maxWidth: lineRight - lineLeft - 2 });
     }
     right -= w + 7;
   });

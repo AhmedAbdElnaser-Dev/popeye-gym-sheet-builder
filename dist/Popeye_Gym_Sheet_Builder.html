@@ -775,8 +775,10 @@ details[open] > .panel__head .panel__chev { rotate: 180deg; }
 details[open] > .panel__head { border-bottom: 1px solid var(--line); border-radius: var(--radius) var(--radius) 0 0; }
 .panel__body { display: grid; gap: 16px; padding: 14px; }
 
-.panel--program { padding: 12px 14px; }
+.panel--program { padding: 12px 14px; display: grid; gap: 8px; }
 .program { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.in--date { direction: ltr; text-align: right; font-variant-numeric: tabular-nums; }
+.in--date::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
 
 /* ---------- form bits ---------- */
 .fld { display: grid; gap: 6px; min-width: 0; }
@@ -1408,14 +1410,23 @@ function newPage(overrides = {}) {
   };
 }
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
 /** A program: named set of pages for one trainee. Zero pages = the start screen. */
 function newDoc(pages = [], name = "") {
-  return { v: 1, name, trainee: "", coach: "", customFields: [], pages };
+  return { v: 1, name, trainee: "", coach: "", startDate: "", endDate: "", customFields: [], pages };
 }
 
-/** The info strip prints when a page asks for it or when names were typed. */
+/** The info strip prints when a page asks for it or when any of its values were typed. */
 function showsInfo(doc, page) {
-  return page.showTrainee || Boolean(doc.trainee.trim() || doc.coach.trim());
+  return page.showTrainee || Boolean(doc.trainee.trim() || doc.coach.trim() || doc.startDate || doc.endDate);
+}
+
+/** "2026-10-01" → "01 / 10 / 2026" for the printed strip; anything else stays blank. */
+function formatDate(iso) {
+  if (!ISO_DATE.test(iso)) return "";
+  const [year, month, day] = iso.split("-");
+  return `${day} / ${month} / ${year}`;
 }
 
 function getField(doc, key) {
@@ -1538,6 +1549,8 @@ function normalizeDoc(raw) {
     name: text(raw.name, TEXT_LIMIT.title),
     trainee: text(raw.trainee, TEXT_LIMIT.person),
     coach: text(raw.coach, TEXT_LIMIT.person),
+    startDate: ISO_DATE.test(raw.startDate) ? raw.startDate : "",
+    endDate: ISO_DATE.test(raw.endDate) ? raw.endDate : "",
     customFields,
     pages: raw.pages.map((page) => normalizePage(page, seen)),
   };
@@ -1877,7 +1890,12 @@ const MIN_CELL_MM = 5.5;
 const DOT = { size: 3.4, gap: 1.2, min: 2.2 };
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const PLACEHOLDER_COLUMN = { key: "_", abbr: "", name: "", weight: 1 };
-const INFO_FIELDS = [["اسم المتدرب", "trainee"], ["اسم المدرب", "coach"], ["بداية البرنامج", "date"], ["نهاية البرنامج", "date"]];
+const INFO_FIELDS = [["اسم المتدرب", "trainee"], ["اسم المدرب", "coach"], ["بداية البرنامج", "startDate"], ["نهاية البرنامج", "endDate"]];
+
+/** What the strip prints for a field: the typed value, or "" when the line should stay blank. */
+function infoValue(doc, key) {
+  return key.endsWith("Date") ? formatDate(doc[key]) : doc[key].trim();
+}
 
 function esc(text) {
   return String(text ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
@@ -2124,8 +2142,9 @@ function renderBand(sheet) {
 
 function renderInfo(doc) {
   return `<div class="info">${INFO_FIELDS.map(([label, key]) => {
-    const value = key === "date" ? "<i>/</i><i>/</i>" : `<b>${esc(doc[key].trim())}</b>`;
-    return `<div class="field"><span>${label}</span><span class="line${key === "date" ? " date" : ""}">${value}</span></div>`;
+    const value = infoValue(doc, key);
+    const blankDate = key.endsWith("Date") && !value;
+    return `<div class="field"><span>${label}</span><span class="line${blankDate ? " date" : ""}">${blankDate ? "<i>/</i><i>/</i>" : `<b>${esc(value)}</b>`}</span></div>`;
   }).join("")}</div>`;
 }
 
@@ -2862,12 +2881,13 @@ function drawInfo(page, ts, fonts, doc, y) {
     const lineRight = right - labelWidth - 2.2;
     const lineLeft = right - w;
     fillRect(page, lineLeft, y + SHEET.trainee - 0.35, lineRight - lineLeft, 0.35, RULE_STRONG);
-    if (key === "date") {
+    const value = infoValue(doc, key);
+    if (key.endsWith("Date") && !value) {
       const span = lineRight - lineLeft;
       [1 / 3, 2 / 3].forEach((at) => ts.line("/", { font: fonts.cairo400, size: 10, color: RULE, center: lineLeft + span * at, baseline: y + SHEET.trainee - 0.9 }));
     } else {
-      // the typed name sits on the line, like handwriting would
-      ts.line(doc[key].trim(), { font: fonts.cairo700, size: 10, color: INK, right: lineRight - 1, baseline: y + SHEET.trainee - 1.1, maxWidth: lineRight - lineLeft - 2 });
+      // the typed value sits on the line, like handwriting would
+      ts.line(value, { font: fonts.cairo700, size: 10, color: INK, right: lineRight - 1, baseline: y + SHEET.trainee - 1.1, maxWidth: lineRight - lineLeft - 2 });
     }
     right -= w + 7;
   });
@@ -3687,11 +3707,18 @@ function renderProgramPanel() {
       <span class="fld__label">${label}</span>
       <input class="in in--sm" dir="auto" data-scope="doc" data-prop="${prop}" data-focus="doc:${prop}" value="${esc(store.doc[prop])}" maxlength="${TEXT_LIMIT.person}" placeholder="${placeholder}" autocomplete="off">
     </label>`;
+  const date = (prop, label) => `<label class="fld">
+      <span class="fld__label">${label}</span>
+      <input class="in in--sm in--date" type="date" data-scope="doc" data-prop="${prop}" data-focus="doc:${prop}" value="${esc(store.doc[prop])}">
+    </label>`;
   return `<section class="panel panel--program" aria-label="بيانات البرنامج">
     <div class="program">
       ${field("trainee", "اسم المتدرب", "يتطبع على كل الصفحات")}
       ${field("coach", "اسم المدرب", "اختياري")}
+      ${date("startDate", "بداية البرنامج")}
+      ${date("endDate", "نهاية البرنامج")}
     </div>
+    <p class="fld__hint">الأسماء والتواريخ بتتطبع في سطر فوق الجدول في كل صفحة — اللي تسيبه فاضي بيتطبع كخط للكتابة بالإيد.</p>
   </section>`;
 }
 
@@ -4207,6 +4234,7 @@ function bindEditorEvents() {
     if (el.dataset.scope === "chip") return updateChip(Number(el.dataset.index), el.value);
     if (!el.dataset.prop || el.matches("select, [type=checkbox], [data-numeric]")) return;
     setText(el.dataset.scope, el.dataset.id, el.dataset.prop, el.value);
+    if (el.type === "date") syncInfoToggle();
   });
 
   root.addEventListener("change", (event) => {

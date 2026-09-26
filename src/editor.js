@@ -95,11 +95,18 @@ function renderProgramPanel() {
       <span class="fld__label">${label}</span>
       <input class="in in--sm" dir="auto" data-scope="doc" data-prop="${prop}" data-focus="doc:${prop}" value="${esc(store.doc[prop])}" maxlength="${TEXT_LIMIT.person}" placeholder="${placeholder}" autocomplete="off">
     </label>`;
+  const date = (prop, label) => `<label class="fld">
+      <span class="fld__label">${label}</span>
+      <input class="in in--sm in--date" type="date" data-scope="doc" data-prop="${prop}" data-focus="doc:${prop}" value="${esc(store.doc[prop])}">
+    </label>`;
   return `<section class="panel panel--program" aria-label="بيانات البرنامج">
     <div class="program">
       ${field("trainee", "اسم المتدرب", "يتطبع على كل الصفحات")}
       ${field("coach", "اسم المدرب", "اختياري")}
+      ${date("startDate", "بداية البرنامج")}
+      ${date("endDate", "نهاية البرنامج")}
     </div>
+    <p class="fld__hint">الأسماء والتواريخ بتتطبع في سطر فوق الجدول في كل صفحة — اللي تسيبه فاضي بيتطبع كخط للكتابة بالإيد.</p>
   </section>`;
 }
 
@@ -615,6 +622,7 @@ function bindEditorEvents() {
     if (el.dataset.scope === "chip") return updateChip(Number(el.dataset.index), el.value);
     if (!el.dataset.prop || el.matches("select, [type=checkbox], [data-numeric]")) return;
     setText(el.dataset.scope, el.dataset.id, el.dataset.prop, el.value);
+    if (el.type === "date") syncInfoToggle();
   });
 
   root.addEventListener("change", (event) => {

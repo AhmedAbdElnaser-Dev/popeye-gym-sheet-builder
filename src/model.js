@@ -97,14 +97,23 @@ function newPage(overrides = {}) {
   };
 }
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
 /** A program: named set of pages for one trainee. Zero pages = the start screen. */
 function newDoc(pages = [], name = "") {
-  return { v: 1, name, trainee: "", coach: "", customFields: [], pages };
+  return { v: 1, name, trainee: "", coach: "", startDate: "", endDate: "", customFields: [], pages };
 }
 
-/** The info strip prints when a page asks for it or when names were typed. */
+/** The info strip prints when a page asks for it or when any of its values were typed. */
 function showsInfo(doc, page) {
-  return page.showTrainee || Boolean(doc.trainee.trim() || doc.coach.trim());
+  return page.showTrainee || Boolean(doc.trainee.trim() || doc.coach.trim() || doc.startDate || doc.endDate);
+}
+
+/** "2026-10-01" → "01 / 10 / 2026" for the printed strip; anything else stays blank. */
+function formatDate(iso) {
+  if (!ISO_DATE.test(iso)) return "";
+  const [year, month, day] = iso.split("-");
+  return `${day} / ${month} / ${year}`;
 }
 
 function getField(doc, key) {
@@ -227,6 +236,8 @@ function normalizeDoc(raw) {
     name: text(raw.name, TEXT_LIMIT.title),
     trainee: text(raw.trainee, TEXT_LIMIT.person),
     coach: text(raw.coach, TEXT_LIMIT.person),
+    startDate: ISO_DATE.test(raw.startDate) ? raw.startDate : "",
+    endDate: ISO_DATE.test(raw.endDate) ? raw.endDate : "",
     customFields,
     pages: raw.pages.map((page) => normalizePage(page, seen)),
   };

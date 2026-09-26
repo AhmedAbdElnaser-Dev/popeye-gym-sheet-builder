@@ -90,7 +90,10 @@ def run():
         # trainee / coach names print on every page's info strip
         ed.locator("[data-scope=doc][data-prop=trainee]").fill("أحمد محمود")
         ed.locator("[data-scope=doc][data-prop=coach]").fill("كابتن محمد")
+        ed.locator("[data-scope=doc][data-prop=startDate]").fill("2026-10-01")
+        ed.locator("[data-scope=doc][data-prop=endDate]").fill("2026-11-26")
         page.wait_for_timeout(700)
+        check("dates print as DD / MM / YYYY", page.locator(".pv .info", has_text="01 / 10 / 2026").count() == 3 and page.locator(".pv .info", has_text="26 / 11 / 2026").count() == 3)
         check("names appear on the sheets", page.locator(".pv .info", has_text="أحمد محمود").count() == 3 and page.locator(".pv .info", has_text="كابتن محمد").count() == 3)
         check("info checkbox reflects the automatic strip", ed.locator("[data-prop=showTrainee]").is_disabled())
 
@@ -178,6 +181,7 @@ def run():
         text = doc[0].get_text()
         check("PDF text is real, selectable Arabic", "بار فلات بنش برس" in text)
         check("names printed in the PDF", "أحمد محمود" in text and "كابتن محمد" in text)
+        check("dates printed in the PDF", "01 / 10 / 2026" in text and "26 / 11 / 2026" in text)
         check("coach becomes the PDF author", "كابتن محمد" in (doc.metadata.get("author") or ""))
         page.locator("[data-action=download]").click()
         page.wait_for_timeout(300)
@@ -266,6 +270,7 @@ def run():
         check("opening the PDF restores 3 pages on 4 sheets", pages_in_preview(page) == 3 and sheets_in_preview(page) == 4)
         check("restored superset kept its rows", ed.locator(".card--group .items--nested > .card").count() == 3)
         check("names restored from the PDF", ed.locator("[data-scope=doc][data-prop=trainee]").input_value() == "أحمد محمود")
+        check("dates restored from the PDF", ed.locator("[data-scope=doc][data-prop=startDate]").input_value() == "2026-10-01")
         check("restored page kept 9 weeks", page.locator(".pv").first.locator("th.day").count() == 9 and "أسبوع" in page.locator(".pv").first.locator("th.day").first.inner_text())
         check("opened file is not dirty", not page.locator(".app").evaluate("el => el.classList.contains('is-dirty')"))
 

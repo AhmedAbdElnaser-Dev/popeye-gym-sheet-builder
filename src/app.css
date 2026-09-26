@@ -358,8 +358,10 @@ details[open] > .panel__head .panel__chev { rotate: 180deg; }
 details[open] > .panel__head { border-bottom: 1px solid var(--line); border-radius: var(--radius) var(--radius) 0 0; }
 .panel__body { display: grid; gap: 16px; padding: 14px; }
 
-.panel--program { padding: 12px 14px; }
+.panel--program { padding: 12px 14px; display: grid; gap: 8px; }
 .program { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.in--date { direction: ltr; text-align: right; font-variant-numeric: tabular-nums; }
+.in--date::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
 
 /* ---------- form bits ---------- */
 .fld { display: grid; gap: 6px; min-width: 0; }

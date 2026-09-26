@@ -30,7 +30,12 @@ const MIN_CELL_MM = 5.5;
 const DOT = { size: 3.4, gap: 1.2, min: 2.2 };
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const PLACEHOLDER_COLUMN = { key: "_", abbr: "", name: "", weight: 1 };
-const INFO_FIELDS = [["اسم المتدرب", "trainee"], ["اسم المدرب", "coach"], ["بداية البرنامج", "date"], ["نهاية البرنامج", "date"]];
+const INFO_FIELDS = [["اسم المتدرب", "trainee"], ["اسم المدرب", "coach"], ["بداية البرنامج", "startDate"], ["نهاية البرنامج", "endDate"]];
+
+/** What the strip prints for a field: the typed value, or "" when the line should stay blank. */
+function infoValue(doc, key) {
+  return key.endsWith("Date") ? formatDate(doc[key]) : doc[key].trim();
+}
 
 function esc(text) {
   return String(text ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
@@ -277,8 +282,9 @@ function renderBand(sheet) {
 
 function renderInfo(doc) {
   return `<div class="info">${INFO_FIELDS.map(([label, key]) => {
-    const value = key === "date" ? "<i>/</i><i>/</i>" : `<b>${esc(doc[key].trim())}</b>`;
-    return `<div class="field"><span>${label}</span><span class="line${key === "date" ? " date" : ""}">${value}</span></div>`;
+    const value = infoValue(doc, key);
+    const blankDate = key.endsWith("Date") && !value;
+    return `<div class="field"><span>${label}</span><span class="line${blankDate ? " date" : ""}">${blankDate ? "<i>/</i><i>/</i>" : `<b>${esc(value)}</b>`}</span></div>`;
   }).join("")}</div>`;
 }
 
