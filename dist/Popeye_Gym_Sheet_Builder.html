@@ -4596,10 +4596,6 @@ function updateTabTitles() {
   });
 }
 
-function isTyping(target) {
-  return target.matches("input:not([type=checkbox]), textarea, select, [contenteditable]");
-}
-
 function bindAppEvents() {
   document.addEventListener("click", (event) => {
     const trigger = event.target.closest("[data-menu-trigger]");
@@ -4622,17 +4618,18 @@ function bindAppEvents() {
       }
       return;
     }
-    if (!mod || document.getElementById("dialog").open) return;
-    const key = event.key.toLowerCase();
-    if (key === "s") {
+    if (!mod || event.altKey || document.getElementById("dialog").open) return;
+    // event.code is layout-independent: an Arabic keyboard reports "ئ" for the Z key
+    if (event.code === "KeyS") {
       event.preventDefault();
       openDownloadDialog();
-    } else if (key === "o") {
+    } else if (event.code === "KeyO") {
       event.preventDefault();
       APP_ACTIONS.open();
-    } else if (!isTyping(event.target) && (key === "z" || key === "y")) {
+    } else if (event.code === "KeyZ" || event.code === "KeyY") {
+      // app-level history everywhere, including inside inputs: a typing burst is one step
       event.preventDefault();
-      if (key === "y" || event.shiftKey) APP_ACTIONS.redo();
+      if (event.code === "KeyY" || event.shiftKey) APP_ACTIONS.redo();
       else APP_ACTIONS.undo();
     }
   });

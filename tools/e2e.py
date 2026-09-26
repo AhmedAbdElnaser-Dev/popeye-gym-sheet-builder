@@ -124,6 +124,21 @@ def run():
         page.wait_for_timeout(250)
         check("Enter adds next exercise in group", kids().count() == 3)
 
+        # keyboard undo/redo: works inside an input and with an Arabic layout (key "ئ", code KeyZ)
+        name_input = ed.locator('[data-container="root"] > .card').first.locator(".in--name")
+        original = name_input.input_value()
+        name_input.fill(original + " تعديل")
+        page.wait_for_timeout(700)
+        name_input.press("Control+z")
+        page.wait_for_timeout(300)
+        check("Ctrl+Z inside an input undoes the typing burst", ed.locator('[data-container="root"] > .card').first.locator(".in--name").input_value() == original)
+        page.keyboard.press("Control+y")
+        page.wait_for_timeout(300)
+        check("Ctrl+Y redoes it", ed.locator('[data-container="root"] > .card').first.locator(".in--name").input_value() == original + " تعديل")
+        page.evaluate("document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'ئ', code: 'KeyZ', ctrlKey: true, bubbles: true, cancelable: true }))")
+        page.wait_for_timeout(300)
+        check("Ctrl+Z on an Arabic layout undoes too", ed.locator('[data-container="root"] > .card').first.locator(".in--name").input_value() == original)
+
         # drag reorder + undo
         ed.evaluate("el => el.scrollTop = 0")
         before = root_names(ed)
