@@ -44,7 +44,7 @@ const GROUP_KINDS = {
 
 const DEFAULT_NOTES_TITLE = "ملاحظات المدرب والتقدم";
 const CUSTOM_KEY = /^c_[a-z0-9]{1,16}$/;
-const TEXT_LIMIT = { title: 80, chip: 80, name: 120, detail: 120, target: 60, label: 80, note: 80, abbr: 8, fieldName: 40, unit: 20 };
+const TEXT_LIMIT = { title: 80, chip: 80, name: 120, detail: 120, target: 60, label: 80, note: 80, abbr: 8, fieldName: 40, unit: 20, person: 60 };
 
 const ID_SHAPE = /^[a-z0-9]{1,12}$/;
 
@@ -97,9 +97,14 @@ function newPage(overrides = {}) {
   };
 }
 
-/** A program: named set of pages. Zero pages = the start screen. */
+/** A program: named set of pages for one trainee. Zero pages = the start screen. */
 function newDoc(pages = [], name = "") {
-  return { v: 1, name, customFields: [], pages };
+  return { v: 1, name, trainee: "", coach: "", customFields: [], pages };
+}
+
+/** The info strip prints when a page asks for it or when names were typed. */
+function showsInfo(doc, page) {
+  return page.showTrainee || Boolean(doc.trainee.trim() || doc.coach.trim());
 }
 
 function getField(doc, key) {
@@ -217,7 +222,14 @@ function normalizeDoc(raw) {
     customFields.push({ key, abbr: text(field.abbr, TEXT_LIMIT.abbr).trim(), name: text(field.name ?? field.abbr, TEXT_LIMIT.fieldName).trim() || text(field.abbr, TEXT_LIMIT.abbr).trim(), weight: 1.1 });
   }
   const seen = new Set();
-  const doc = { v: 1, name: text(raw.name, TEXT_LIMIT.title), customFields, pages: raw.pages.map((page) => normalizePage(page, seen)) };
+  const doc = {
+    v: 1,
+    name: text(raw.name, TEXT_LIMIT.title),
+    trainee: text(raw.trainee, TEXT_LIMIT.person),
+    coach: text(raw.coach, TEXT_LIMIT.person),
+    customFields,
+    pages: raw.pages.map((page) => normalizePage(page, seen)),
+  };
   const known = new Set(allFieldKeys(doc));
   const resolve = (keys) => keys.map((key) => (own(FIELD_LIBRARY, key) ? key : rekey.get(key))).filter((key) => known.has(key));
   // remap re-keyed fields and drop references to fields that no longer exist

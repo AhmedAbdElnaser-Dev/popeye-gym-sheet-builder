@@ -116,7 +116,8 @@ function cleanFilename(raw) {
 }
 
 function suggestedFilename() {
-  return cleanFilename(store.doc.name || store.doc.pages.map((page) => page.title).join(" - "));
+  const program = store.doc.name || store.doc.pages.map((page) => page.title).join(" - ");
+  return cleanFilename([store.doc.trainee.trim(), program].filter(Boolean).join(" - "));
 }
 
 async function openDownloadDialog() {
@@ -330,6 +331,7 @@ async function boot() {
     if (kind === "saved") return;
     if (kind === "text") {
       updateTabTitles();
+      syncInfoToggle();
       schedulePreview();
       return;
     }

@@ -87,6 +87,13 @@ def run():
         check("first page is Push", "صدر" in ed.locator(".tab.is-active").inner_text())
         check("dirty dot shows after loading", page.locator(".app").evaluate("el => el.classList.contains('is-dirty')"))
 
+        # trainee / coach names print on every page's info strip
+        ed.locator("[data-scope=doc][data-prop=trainee]").fill("أحمد محمود")
+        ed.locator("[data-scope=doc][data-prop=coach]").fill("كابتن محمد")
+        page.wait_for_timeout(700)
+        check("names appear on the sheets", page.locator(".pv .info", has_text="أحمد محمود").count() == 3 and page.locator(".pv .info", has_text="كابتن محمد").count() == 3)
+        check("info checkbox reflects the automatic strip", ed.locator("[data-prop=showTrainee]").is_disabled())
+
         # superset + custom field row
         ed.locator('[data-action=item-add][data-kind=superset][data-into=""]').click()
         page.wait_for_timeout(250)
@@ -139,7 +146,7 @@ def run():
         check("13 rows at 12 mm → page spans 2 sheets", pages_in_preview(page) == 3 and sheets_before == 4 and "×2" in ed.locator(".tab.is-active").inner_text())
         second = page.locator(".pv").nth(1)
         check("continuation sheet says ورقة 2 من 2", "ورقة 2 من 2" in second.inner_text())
-        check("continuation sheet keeps numbering going", second.locator(".num").first.inner_text().strip() not in ("01", "A1"))
+        check("continuation sheet keeps numbering going", page.locator(".pv").first.locator(".num", has_text="01").count() == 1 and second.locator(".num", has_text="01").count() == 0)
         check("no sheet is taller than the paper", page.evaluate("[...document.querySelectorAll('.pv .sheet-page')].every((el) => el.scrollHeight <= el.clientHeight + 1)"))
         rows_on_second = second.locator("tbody tr").count()
         open_settings(ed)
@@ -150,11 +157,13 @@ def run():
         for _ in range(12):
             ed.locator('[data-action=step][data-prop=minRowHeight][data-delta="1"]').click()
         page.wait_for_timeout(400)
-        check("min row height 20 mm → three sheets", sheets_in_preview(page) == 5)
+        tall = sheets_in_preview(page)
+        check("min row height 20 mm → more sheets", tall > sheets_before and "×" in ed.locator(".tab.is-active").inner_text())
+        check("tall rows really are ≥ 20 mm", page.locator(".pv").first.locator("tbody tr").first.evaluate("el => el.getBoundingClientRect().height / (el.closest('.pv__scale').getBoundingClientRect().width / 297)") >= 19.5)
         for _ in range(8):
             ed.locator('[data-action=step][data-prop=minRowHeight][data-delta="-1"]').click()
         page.wait_for_timeout(300)
-        check("back at 12 mm → two sheets", sheets_in_preview(page) == 4)
+        check("back at 12 mm → two sheets", sheets_in_preview(page) == sheets_before)
 
         # download through the dialog → real PDF with the program inside
         pdf_path = SHOTS / "e2e-program.pdf"
@@ -168,6 +177,13 @@ def run():
         check("PDF has the program attachment", doc.embfile_count() == 1 and doc.embfile_names()[0] == "program.json")
         text = doc[0].get_text()
         check("PDF text is real, selectable Arabic", "بار فلات بنش برس" in text)
+        check("names printed in the PDF", "أحمد محمود" in text and "كابتن محمد" in text)
+        check("coach becomes the PDF author", "كابتن محمد" in (doc.metadata.get("author") or ""))
+        page.locator("[data-action=download]").click()
+        page.wait_for_timeout(300)
+        check("trainee leads the suggested file name", page.locator("#dialog [name=filename]").input_value().startswith("أحمد محمود - "))
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(200)
         # extractors glue neighbouring chips into one line; compare without spaces
         check("continuation sheet in PDF says ورقة 2 من 2", "من2ورقة" in doc[1].get_text().replace(" ", ""))
         fonts = {f[3].split("+")[-1] for pg in doc for f in pg.get_fonts()}
@@ -249,6 +265,7 @@ def run():
         page.wait_for_timeout(1200)
         check("opening the PDF restores 3 pages on 4 sheets", pages_in_preview(page) == 3 and sheets_in_preview(page) == 4)
         check("restored superset kept its rows", ed.locator(".card--group .items--nested > .card").count() == 3)
+        check("names restored from the PDF", ed.locator("[data-scope=doc][data-prop=trainee]").input_value() == "أحمد محمود")
         check("restored page kept 9 weeks", page.locator(".pv").first.locator("th.day").count() == 9 and "أسبوع" in page.locator(".pv").first.locator("th.day").first.inner_text())
         check("opened file is not dirty", not page.locator(".app").evaluate("el => el.classList.contains('is-dirty')"))
 

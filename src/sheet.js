@@ -30,7 +30,7 @@ const MIN_CELL_MM = 5.5;
 const DOT = { size: 3.4, gap: 1.2, min: 2.2 };
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const PLACEHOLDER_COLUMN = { key: "_", abbr: "", name: "", weight: 1 };
-const TRAINEE_FIELDS = [["اسم المتدرب", false], ["اسم المدرب", false], ["بداية البرنامج", true], ["نهاية البرنامج", true]];
+const INFO_FIELDS = [["اسم المتدرب", "trainee"], ["اسم المدرب", "coach"], ["بداية البرنامج", "date"], ["نهاية البرنامج", "date"]];
 
 function esc(text) {
   return String(text ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
@@ -141,8 +141,8 @@ function cellWidths(dayWidth, fields) {
 }
 
 /** Height of everything on a sheet that is not a body row. */
-function fixedHeight(page, hasSubHead, first) {
-  const trainee = first && page.showTrainee;
+function fixedHeight(page, hasSubHead, first, info) {
+  const trainee = first && info;
   const blocks = 3 + (page.notes ? 1 : 0) + (trainee ? 1 : 0);
   return SHEET.band + SHEET.dayHead + (hasSubHead ? SHEET.subHead : 0) + SHEET.tableBorder * 2 + SHEET.footer
     + (blocks - 1) * SHEET.gap + (trainee ? SHEET.trainee : 0) + (page.notes ? SHEET.notesMin : 0);
@@ -152,11 +152,11 @@ function fixedHeight(page, hasSubHead, first) {
  * Cuts the rows into sheets. A group head never ends a sheet, a rounds tracker never starts one
  * on its own (it takes the group's last exercise along), and a group that spills gets a "تابع" head.
  */
-function splitRows(page, rows, hasSubHead) {
+function splitRows(page, rows, hasSubHead, info) {
   const sheets = [];
   let current = [];
   let used = 0;
-  let available = SHEET.innerHeight - fixedHeight(page, hasSubHead, true);
+  let available = SHEET.innerHeight - fixedHeight(page, hasSubHead, true, info);
 
   for (const row of rows) {
     const height = rowFloor(page, row);
@@ -168,7 +168,7 @@ function splitRows(page, rows, hasSubHead) {
       if (current.length) sheets.push(current);
       current = [];
       used = 0;
-      available = SHEET.innerHeight - fixedHeight(page, hasSubHead, false);
+      available = SHEET.innerHeight - fixedHeight(page, hasSubHead, false, info);
       const lead = carried[0] || row;
       const head = orphan || (lead.group && lead.kind !== "groupHead" ? { kind: "groupHead", group: lead.group, letter: lead.letter, continued: true } : null);
       for (const opener of [head, ...carried].filter(Boolean)) {
@@ -191,8 +191,9 @@ function layoutSheet(doc, page, rows, first) {
   const pageColumns = resolveFields(doc, page.fields);
   const columns = pageColumns.length ? pageColumns : [PLACEHOLDER_COLUMN];
   const hasSubHead = pageColumns.length > 0;
+  const info = showsInfo(doc, page);
   const units = rows.reduce((sum, row) => sum + rowWeight(row), 0);
-  const available = SHEET.innerHeight - fixedHeight(page, hasSubHead, first);
+  const available = SHEET.innerHeight - fixedHeight(page, hasSubHead, first, info);
   const ceiling = Math.max(page.minRowHeight, page.notes ? ROW_HEIGHT.max : ROW_HEIGHT.maxWithoutNotes);
 
   // rows grow to fill the sheet, between the page's minimum and the ceiling
@@ -217,14 +218,14 @@ function layoutSheet(doc, page, rows, first) {
 
   const headHeight = SHEET.dayHead + (hasSubHead ? SHEET.subHead : 0);
   const tableHeight = headHeight + bodyHeight + SHEET.tableBorder * 2;
-  return { page, first, columns, hasSubHead, rows, rowHeight, dayWidth, narrowest, headHeight, tableHeight, warnings };
+  return { page, first, info: first && info, columns, hasSubHead, rows, rowHeight, dayWidth, narrowest, headHeight, tableHeight, warnings };
 }
 
 /** Everything the renderers and the editor need to know about how a page lands on paper. */
 function layoutPage(doc, page) {
   const rows = flattenRows(page);
   const hasSubHead = resolveFields(doc, page.fields).length > 0;
-  const sheets = splitRows(page, rows, hasSubHead).map((chunk, index) => layoutSheet(doc, page, chunk, index === 0));
+  const sheets = splitRows(page, rows, hasSubHead, showsInfo(doc, page)).map((chunk, index) => layoutSheet(doc, page, chunk, index === 0));
   return {
     rows,
     sheets,
@@ -274,9 +275,11 @@ function renderBand(sheet) {
     </header>`;
 }
 
-function renderTrainee() {
-  return `<div class="info">${TRAINEE_FIELDS.map(([label, isDate]) =>
-    `<div class="field"><span>${label}</span><span class="line${isDate ? " date" : ""}">${isDate ? "<i>/</i><i>/</i>" : ""}</span></div>`).join("")}</div>`;
+function renderInfo(doc) {
+  return `<div class="info">${INFO_FIELDS.map(([label, key]) => {
+    const value = key === "date" ? "<i>/</i><i>/</i>" : `<b>${esc(doc[key].trim())}</b>`;
+    return `<div class="field"><span>${label}</span><span class="line${key === "date" ? " date" : ""}">${value}</span></div>`;
+  }).join("")}</div>`;
 }
 
 function renderHead(page, layout) {
@@ -372,7 +375,7 @@ function renderSheet(doc, sheet) {
   return `
   <section class="sheet-page" data-page-id="${page.id}" data-sheet="${sheet.sheetIndex}">
     ${renderBand(sheet)}
-    ${sheet.first && page.showTrainee ? renderTrainee() : ""}
+    ${layout.info ? renderInfo(doc) : ""}
     <div class="table-wrap"><table class="log">
       ${renderColgroup(page, layout)}
       ${renderHead(page, layout)}

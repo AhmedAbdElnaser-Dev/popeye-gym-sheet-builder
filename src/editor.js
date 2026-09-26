@@ -33,7 +33,7 @@ function renderEditor() {
   const page = activePage();
   const layout = layoutPage(store.doc, page);
 
-  root.innerHTML = `${renderTabs()}${renderSettings(page, layout)}${renderItemsPanel(page, layout)}`;
+  root.innerHTML = `${renderTabs()}${renderProgramPanel()}${renderSettings(page, layout)}${renderItemsPanel(page, layout)}`;
   root.querySelector("details[data-panel=settings]").addEventListener("toggle", (event) => {
     ui.settingsOpen = event.target.open;
   });
@@ -88,6 +88,29 @@ function renderTabs() {
       <div class="menu__panel"></div>
     </div>
   </div>`;
+}
+
+function renderProgramPanel() {
+  const field = (prop, label, placeholder) => `<label class="fld">
+      <span class="fld__label">${label}</span>
+      <input class="in in--sm" dir="auto" data-scope="doc" data-prop="${prop}" data-focus="doc:${prop}" value="${esc(store.doc[prop])}" maxlength="${TEXT_LIMIT.person}" placeholder="${placeholder}" autocomplete="off">
+    </label>`;
+  return `<section class="panel panel--program" aria-label="بيانات البرنامج">
+    <div class="program">
+      ${field("trainee", "اسم المتدرب", "يتطبع على كل الصفحات")}
+      ${field("coach", "اسم المدرب", "اختياري")}
+    </div>
+  </section>`;
+}
+
+/** Typing names doesn't re-render the editor; keep the info-strip checkbox honest anyway. */
+function syncInfoToggle() {
+  const box = editorRoot().querySelector("[data-prop=showTrainee]");
+  const page = activePage();
+  if (!box || !page) return;
+  const automatic = showsInfo(store.doc, page) && !page.showTrainee;
+  box.disabled = automatic;
+  box.title = automatic ? "بيظهر تلقائيًا لأن الأسماء مكتوبة" : "";
 }
 
 function renderSettings(page, layout) {
@@ -159,7 +182,7 @@ function renderSettings(page, layout) {
         <div class="toggles">
           <label class="check"><input type="checkbox" data-scope="page" data-prop="notes"${page.notes ? " checked" : ""}><span>مربع الملاحظات</span></label>
           ${page.notes ? `<input class="in in--sm" data-scope="page" data-prop="notesTitle" data-focus="page:notesTitle" value="${esc(page.notesTitle)}" aria-label="عنوان الملاحظات">` : ""}
-          <label class="check"><input type="checkbox" data-scope="page" data-prop="showTrainee"${page.showTrainee ? " checked" : ""}><span>بيانات المتدرب (الاسم والتاريخ)</span></label>
+          <label class="check"><input type="checkbox" data-scope="page" data-prop="showTrainee"${page.showTrainee ? " checked" : ""}${showsInfo(store.doc, page) && !page.showTrainee ? ' disabled title="بيظهر تلقائيًا لأن الأسماء مكتوبة"' : ""}><span>سطر الأسماء والتاريخ</span></label>
         </div>
       </div>
 
@@ -325,7 +348,7 @@ function targetOf(page, scope, id) {
 
 function setText(scope, id, prop, value) {
   change((doc, page) => {
-    const target = targetOf(page, scope, id);
+    const target = scope === "doc" ? doc : targetOf(page, scope, id);
     if (target) target[prop] = value;
   }, { typing: true });
 }

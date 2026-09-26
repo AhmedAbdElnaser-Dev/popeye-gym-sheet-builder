@@ -401,20 +401,23 @@ function wrapChips(ts, fonts, chips, maxWidth) {
   return lines;
 }
 
-function drawTrainee(page, ts, fonts, y) {
+function drawInfo(page, ts, fonts, doc, y) {
   const inner = SHEET.innerWidth - 2;
   const fr = (inner - 7 * 3) / 4.5;
   const widths = [1.25 * fr, 1.25 * fr, fr, fr];
   let right = SHEET.padX + SHEET.innerWidth - 1;
-  TRAINEE_FIELDS.forEach(([label, isDate], index) => {
+  INFO_FIELDS.forEach(([label, key], index) => {
     const w = widths[index];
     const labelWidth = ts.line(label, { font: fonts.cairo700, size: 9, color: BLOOD, right, y: y + SHEET.trainee - (9 * 1.2) / PT / 2 });
     const lineRight = right - labelWidth - 2.2;
     const lineLeft = right - w;
     fillRect(page, lineLeft, y + SHEET.trainee - 0.35, lineRight - lineLeft, 0.35, RULE_STRONG);
-    if (isDate) {
+    if (key === "date") {
       const span = lineRight - lineLeft;
       [1 / 3, 2 / 3].forEach((at) => ts.line("/", { font: fonts.cairo400, size: 10, color: RULE, center: lineLeft + span * at, baseline: y + SHEET.trainee - 0.9 }));
+    } else {
+      // the typed name sits on the line, like handwriting would
+      ts.line(doc[key].trim(), { font: fonts.cairo700, size: 10, color: INK, right: lineRight - 1, baseline: y + SHEET.trainee - 1.1, maxWidth: lineRight - lineLeft - 2 });
     }
     right -= w + 7;
   });
@@ -671,8 +674,8 @@ function drawSheet(page, ctx, sheet) {
 
   drawBand(page, ts, fonts, pageData, band, sheetChips(sheet));
   let y = SHEET.padY + SHEET.band + SHEET.gap;
-  if (sheet.first && pageData.showTrainee) {
-    drawTrainee(page, ts, fonts, y);
+  if (layout.info) {
+    drawInfo(page, ts, fonts, doc, y);
     y += SHEET.trainee + SHEET.gap;
   }
   drawTable(page, ts, fonts, doc, pageData, layout, y);
@@ -803,9 +806,9 @@ async function generateProgramPdf(doc, { now = new Date() } = {}) {
 
   const title = doc.name.trim() || "برنامج تمرين";
   pdf.setTitle(`${title} — Popeye Gym`);
-  pdf.setAuthor("Popeye Gym");
-  pdf.setSubject(doc.pages.map((pageData) => pageData.title).join(" · "));
-  pdf.setKeywords(["Popeye Gym", "training log", "سجل تمرين"]);
+  pdf.setAuthor(doc.coach.trim() ? `${doc.coach.trim()} — Popeye Gym` : "Popeye Gym");
+  pdf.setSubject([doc.trainee.trim() && `المتدرب: ${doc.trainee.trim()}`, doc.pages.map((pageData) => pageData.title).join(" · ")].filter(Boolean).join(" — "));
+  pdf.setKeywords(["Popeye Gym", "training log", "سجل تمرين", doc.trainee.trim(), doc.coach.trim()].filter(Boolean));
   pdf.setCreator("Popeye Gym Sheet Builder");
   pdf.setProducer("Popeye Gym Sheet Builder");
   pdf.setCreationDate(now);

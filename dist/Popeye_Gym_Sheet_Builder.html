@@ -144,7 +144,26 @@
   white-space: nowrap;
   line-height: 1.2;
 }
-.sheet-page .field .line { flex: 1; height: 100%; border-bottom: 0.35mm solid var(--rule-strong); }
+.sheet-page .field .line {
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 1mm 0.6mm;
+  border-bottom: 0.35mm solid var(--rule-strong);
+}
+.sheet-page .field .line b {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 10pt;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink);
+  unicode-bidi: plaintext;
+}
 .sheet-page .field .line.date {
   display: flex;
   justify-content: space-evenly;
@@ -756,6 +775,9 @@ details[open] > .panel__head .panel__chev { rotate: 180deg; }
 details[open] > .panel__head { border-bottom: 1px solid var(--line); border-radius: var(--radius) var(--radius) 0 0; }
 .panel__body { display: grid; gap: 16px; padding: 14px; }
 
+.panel--program { padding: 12px 14px; }
+.program { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
 /* ---------- form bits ---------- */
 .fld { display: grid; gap: 6px; min-width: 0; }
 .fld__label { font-size: 12.5px; font-weight: 700; color: var(--text-2); }
@@ -1216,6 +1238,7 @@ details[open] > .panel__head { border-bottom: 1px solid var(--line); border-radi
   .card__main { flex-wrap: wrap; }
   .in--name { flex: 1 1 160px; }
   .group-opts { grid-template-columns: 1fr; }
+  .program { grid-template-columns: 1fr; }
   .fld-row { grid-template-columns: 1fr; }
 }
 
@@ -1332,7 +1355,7 @@ const GROUP_KINDS = {
 
 const DEFAULT_NOTES_TITLE = "ملاحظات المدرب والتقدم";
 const CUSTOM_KEY = /^c_[a-z0-9]{1,16}$/;
-const TEXT_LIMIT = { title: 80, chip: 80, name: 120, detail: 120, target: 60, label: 80, note: 80, abbr: 8, fieldName: 40, unit: 20 };
+const TEXT_LIMIT = { title: 80, chip: 80, name: 120, detail: 120, target: 60, label: 80, note: 80, abbr: 8, fieldName: 40, unit: 20, person: 60 };
 
 const ID_SHAPE = /^[a-z0-9]{1,12}$/;
 
@@ -1385,9 +1408,14 @@ function newPage(overrides = {}) {
   };
 }
 
-/** A program: named set of pages. Zero pages = the start screen. */
+/** A program: named set of pages for one trainee. Zero pages = the start screen. */
 function newDoc(pages = [], name = "") {
-  return { v: 1, name, customFields: [], pages };
+  return { v: 1, name, trainee: "", coach: "", customFields: [], pages };
+}
+
+/** The info strip prints when a page asks for it or when names were typed. */
+function showsInfo(doc, page) {
+  return page.showTrainee || Boolean(doc.trainee.trim() || doc.coach.trim());
 }
 
 function getField(doc, key) {
@@ -1505,7 +1533,14 @@ function normalizeDoc(raw) {
     customFields.push({ key, abbr: text(field.abbr, TEXT_LIMIT.abbr).trim(), name: text(field.name ?? field.abbr, TEXT_LIMIT.fieldName).trim() || text(field.abbr, TEXT_LIMIT.abbr).trim(), weight: 1.1 });
   }
   const seen = new Set();
-  const doc = { v: 1, name: text(raw.name, TEXT_LIMIT.title), customFields, pages: raw.pages.map((page) => normalizePage(page, seen)) };
+  const doc = {
+    v: 1,
+    name: text(raw.name, TEXT_LIMIT.title),
+    trainee: text(raw.trainee, TEXT_LIMIT.person),
+    coach: text(raw.coach, TEXT_LIMIT.person),
+    customFields,
+    pages: raw.pages.map((page) => normalizePage(page, seen)),
+  };
   const known = new Set(allFieldKeys(doc));
   const resolve = (keys) => keys.map((key) => (own(FIELD_LIBRARY, key) ? key : rekey.get(key))).filter((key) => known.has(key));
   // remap re-keyed fields and drop references to fields that no longer exist
@@ -1842,7 +1877,7 @@ const MIN_CELL_MM = 5.5;
 const DOT = { size: 3.4, gap: 1.2, min: 2.2 };
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const PLACEHOLDER_COLUMN = { key: "_", abbr: "", name: "", weight: 1 };
-const TRAINEE_FIELDS = [["اسم المتدرب", false], ["اسم المدرب", false], ["بداية البرنامج", true], ["نهاية البرنامج", true]];
+const INFO_FIELDS = [["اسم المتدرب", "trainee"], ["اسم المدرب", "coach"], ["بداية البرنامج", "date"], ["نهاية البرنامج", "date"]];
 
 function esc(text) {
   return String(text ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
@@ -1953,8 +1988,8 @@ function cellWidths(dayWidth, fields) {
 }
 
 /** Height of everything on a sheet that is not a body row. */
-function fixedHeight(page, hasSubHead, first) {
-  const trainee = first && page.showTrainee;
+function fixedHeight(page, hasSubHead, first, info) {
+  const trainee = first && info;
   const blocks = 3 + (page.notes ? 1 : 0) + (trainee ? 1 : 0);
   return SHEET.band + SHEET.dayHead + (hasSubHead ? SHEET.subHead : 0) + SHEET.tableBorder * 2 + SHEET.footer
     + (blocks - 1) * SHEET.gap + (trainee ? SHEET.trainee : 0) + (page.notes ? SHEET.notesMin : 0);
@@ -1964,11 +1999,11 @@ function fixedHeight(page, hasSubHead, first) {
  * Cuts the rows into sheets. A group head never ends a sheet, a rounds tracker never starts one
  * on its own (it takes the group's last exercise along), and a group that spills gets a "تابع" head.
  */
-function splitRows(page, rows, hasSubHead) {
+function splitRows(page, rows, hasSubHead, info) {
   const sheets = [];
   let current = [];
   let used = 0;
-  let available = SHEET.innerHeight - fixedHeight(page, hasSubHead, true);
+  let available = SHEET.innerHeight - fixedHeight(page, hasSubHead, true, info);
 
   for (const row of rows) {
     const height = rowFloor(page, row);
@@ -1980,7 +2015,7 @@ function splitRows(page, rows, hasSubHead) {
       if (current.length) sheets.push(current);
       current = [];
       used = 0;
-      available = SHEET.innerHeight - fixedHeight(page, hasSubHead, false);
+      available = SHEET.innerHeight - fixedHeight(page, hasSubHead, false, info);
       const lead = carried[0] || row;
       const head = orphan || (lead.group && lead.kind !== "groupHead" ? { kind: "groupHead", group: lead.group, letter: lead.letter, continued: true } : null);
       for (const opener of [head, ...carried].filter(Boolean)) {
@@ -2003,8 +2038,9 @@ function layoutSheet(doc, page, rows, first) {
   const pageColumns = resolveFields(doc, page.fields);
   const columns = pageColumns.length ? pageColumns : [PLACEHOLDER_COLUMN];
   const hasSubHead = pageColumns.length > 0;
+  const info = showsInfo(doc, page);
   const units = rows.reduce((sum, row) => sum + rowWeight(row), 0);
-  const available = SHEET.innerHeight - fixedHeight(page, hasSubHead, first);
+  const available = SHEET.innerHeight - fixedHeight(page, hasSubHead, first, info);
   const ceiling = Math.max(page.minRowHeight, page.notes ? ROW_HEIGHT.max : ROW_HEIGHT.maxWithoutNotes);
 
   // rows grow to fill the sheet, between the page's minimum and the ceiling
@@ -2029,14 +2065,14 @@ function layoutSheet(doc, page, rows, first) {
 
   const headHeight = SHEET.dayHead + (hasSubHead ? SHEET.subHead : 0);
   const tableHeight = headHeight + bodyHeight + SHEET.tableBorder * 2;
-  return { page, first, columns, hasSubHead, rows, rowHeight, dayWidth, narrowest, headHeight, tableHeight, warnings };
+  return { page, first, info: first && info, columns, hasSubHead, rows, rowHeight, dayWidth, narrowest, headHeight, tableHeight, warnings };
 }
 
 /** Everything the renderers and the editor need to know about how a page lands on paper. */
 function layoutPage(doc, page) {
   const rows = flattenRows(page);
   const hasSubHead = resolveFields(doc, page.fields).length > 0;
-  const sheets = splitRows(page, rows, hasSubHead).map((chunk, index) => layoutSheet(doc, page, chunk, index === 0));
+  const sheets = splitRows(page, rows, hasSubHead, showsInfo(doc, page)).map((chunk, index) => layoutSheet(doc, page, chunk, index === 0));
   return {
     rows,
     sheets,
@@ -2086,9 +2122,11 @@ function renderBand(sheet) {
     </header>`;
 }
 
-function renderTrainee() {
-  return `<div class="info">${TRAINEE_FIELDS.map(([label, isDate]) =>
-    `<div class="field"><span>${label}</span><span class="line${isDate ? " date" : ""}">${isDate ? "<i>/</i><i>/</i>" : ""}</span></div>`).join("")}</div>`;
+function renderInfo(doc) {
+  return `<div class="info">${INFO_FIELDS.map(([label, key]) => {
+    const value = key === "date" ? "<i>/</i><i>/</i>" : `<b>${esc(doc[key].trim())}</b>`;
+    return `<div class="field"><span>${label}</span><span class="line${key === "date" ? " date" : ""}">${value}</span></div>`;
+  }).join("")}</div>`;
 }
 
 function renderHead(page, layout) {
@@ -2184,7 +2222,7 @@ function renderSheet(doc, sheet) {
   return `
   <section class="sheet-page" data-page-id="${page.id}" data-sheet="${sheet.sheetIndex}">
     ${renderBand(sheet)}
-    ${sheet.first && page.showTrainee ? renderTrainee() : ""}
+    ${layout.info ? renderInfo(doc) : ""}
     <div class="table-wrap"><table class="log">
       ${renderColgroup(page, layout)}
       ${renderHead(page, layout)}
@@ -2813,20 +2851,23 @@ function wrapChips(ts, fonts, chips, maxWidth) {
   return lines;
 }
 
-function drawTrainee(page, ts, fonts, y) {
+function drawInfo(page, ts, fonts, doc, y) {
   const inner = SHEET.innerWidth - 2;
   const fr = (inner - 7 * 3) / 4.5;
   const widths = [1.25 * fr, 1.25 * fr, fr, fr];
   let right = SHEET.padX + SHEET.innerWidth - 1;
-  TRAINEE_FIELDS.forEach(([label, isDate], index) => {
+  INFO_FIELDS.forEach(([label, key], index) => {
     const w = widths[index];
     const labelWidth = ts.line(label, { font: fonts.cairo700, size: 9, color: BLOOD, right, y: y + SHEET.trainee - (9 * 1.2) / PT / 2 });
     const lineRight = right - labelWidth - 2.2;
     const lineLeft = right - w;
     fillRect(page, lineLeft, y + SHEET.trainee - 0.35, lineRight - lineLeft, 0.35, RULE_STRONG);
-    if (isDate) {
+    if (key === "date") {
       const span = lineRight - lineLeft;
       [1 / 3, 2 / 3].forEach((at) => ts.line("/", { font: fonts.cairo400, size: 10, color: RULE, center: lineLeft + span * at, baseline: y + SHEET.trainee - 0.9 }));
+    } else {
+      // the typed name sits on the line, like handwriting would
+      ts.line(doc[key].trim(), { font: fonts.cairo700, size: 10, color: INK, right: lineRight - 1, baseline: y + SHEET.trainee - 1.1, maxWidth: lineRight - lineLeft - 2 });
     }
     right -= w + 7;
   });
@@ -3083,8 +3124,8 @@ function drawSheet(page, ctx, sheet) {
 
   drawBand(page, ts, fonts, pageData, band, sheetChips(sheet));
   let y = SHEET.padY + SHEET.band + SHEET.gap;
-  if (sheet.first && pageData.showTrainee) {
-    drawTrainee(page, ts, fonts, y);
+  if (layout.info) {
+    drawInfo(page, ts, fonts, doc, y);
     y += SHEET.trainee + SHEET.gap;
   }
   drawTable(page, ts, fonts, doc, pageData, layout, y);
@@ -3215,9 +3256,9 @@ async function generateProgramPdf(doc, { now = new Date() } = {}) {
 
   const title = doc.name.trim() || "برنامج تمرين";
   pdf.setTitle(`${title} — Popeye Gym`);
-  pdf.setAuthor("Popeye Gym");
-  pdf.setSubject(doc.pages.map((pageData) => pageData.title).join(" · "));
-  pdf.setKeywords(["Popeye Gym", "training log", "سجل تمرين"]);
+  pdf.setAuthor(doc.coach.trim() ? `${doc.coach.trim()} — Popeye Gym` : "Popeye Gym");
+  pdf.setSubject([doc.trainee.trim() && `المتدرب: ${doc.trainee.trim()}`, doc.pages.map((pageData) => pageData.title).join(" · ")].filter(Boolean).join(" — "));
+  pdf.setKeywords(["Popeye Gym", "training log", "سجل تمرين", doc.trainee.trim(), doc.coach.trim()].filter(Boolean));
   pdf.setCreator("Popeye Gym Sheet Builder");
   pdf.setProducer("Popeye Gym Sheet Builder");
   pdf.setCreationDate(now);
@@ -3584,7 +3625,7 @@ function renderEditor() {
   const page = activePage();
   const layout = layoutPage(store.doc, page);
 
-  root.innerHTML = `${renderTabs()}${renderSettings(page, layout)}${renderItemsPanel(page, layout)}`;
+  root.innerHTML = `${renderTabs()}${renderProgramPanel()}${renderSettings(page, layout)}${renderItemsPanel(page, layout)}`;
   root.querySelector("details[data-panel=settings]").addEventListener("toggle", (event) => {
     ui.settingsOpen = event.target.open;
   });
@@ -3639,6 +3680,29 @@ function renderTabs() {
       <div class="menu__panel"></div>
     </div>
   </div>`;
+}
+
+function renderProgramPanel() {
+  const field = (prop, label, placeholder) => `<label class="fld">
+      <span class="fld__label">${label}</span>
+      <input class="in in--sm" dir="auto" data-scope="doc" data-prop="${prop}" data-focus="doc:${prop}" value="${esc(store.doc[prop])}" maxlength="${TEXT_LIMIT.person}" placeholder="${placeholder}" autocomplete="off">
+    </label>`;
+  return `<section class="panel panel--program" aria-label="بيانات البرنامج">
+    <div class="program">
+      ${field("trainee", "اسم المتدرب", "يتطبع على كل الصفحات")}
+      ${field("coach", "اسم المدرب", "اختياري")}
+    </div>
+  </section>`;
+}
+
+/** Typing names doesn't re-render the editor; keep the info-strip checkbox honest anyway. */
+function syncInfoToggle() {
+  const box = editorRoot().querySelector("[data-prop=showTrainee]");
+  const page = activePage();
+  if (!box || !page) return;
+  const automatic = showsInfo(store.doc, page) && !page.showTrainee;
+  box.disabled = automatic;
+  box.title = automatic ? "بيظهر تلقائيًا لأن الأسماء مكتوبة" : "";
 }
 
 function renderSettings(page, layout) {
@@ -3710,7 +3774,7 @@ function renderSettings(page, layout) {
         <div class="toggles">
           <label class="check"><input type="checkbox" data-scope="page" data-prop="notes"${page.notes ? " checked" : ""}><span>مربع الملاحظات</span></label>
           ${page.notes ? `<input class="in in--sm" data-scope="page" data-prop="notesTitle" data-focus="page:notesTitle" value="${esc(page.notesTitle)}" aria-label="عنوان الملاحظات">` : ""}
-          <label class="check"><input type="checkbox" data-scope="page" data-prop="showTrainee"${page.showTrainee ? " checked" : ""}><span>بيانات المتدرب (الاسم والتاريخ)</span></label>
+          <label class="check"><input type="checkbox" data-scope="page" data-prop="showTrainee"${page.showTrainee ? " checked" : ""}${showsInfo(store.doc, page) && !page.showTrainee ? ' disabled title="بيظهر تلقائيًا لأن الأسماء مكتوبة"' : ""}><span>سطر الأسماء والتاريخ</span></label>
         </div>
       </div>
 
@@ -3876,7 +3940,7 @@ function targetOf(page, scope, id) {
 
 function setText(scope, id, prop, value) {
   change((doc, page) => {
-    const target = targetOf(page, scope, id);
+    const target = scope === "doc" ? doc : targetOf(page, scope, id);
     if (target) target[prop] = value;
   }, { typing: true });
 }
@@ -4353,7 +4417,8 @@ function cleanFilename(raw) {
 }
 
 function suggestedFilename() {
-  return cleanFilename(store.doc.name || store.doc.pages.map((page) => page.title).join(" - "));
+  const program = store.doc.name || store.doc.pages.map((page) => page.title).join(" - ");
+  return cleanFilename([store.doc.trainee.trim(), program].filter(Boolean).join(" - "));
 }
 
 async function openDownloadDialog() {
@@ -4567,6 +4632,7 @@ async function boot() {
     if (kind === "saved") return;
     if (kind === "text") {
       updateTabTitles();
+      syncInfoToggle();
       schedulePreview();
       return;
     }

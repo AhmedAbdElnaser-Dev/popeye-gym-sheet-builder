@@ -18,7 +18,7 @@ Work is kept per browser tab (`sessionStorage`): it survives a reload, not closi
 
 ## How a sheet is modelled
 
-- **Program (doc):** `name` + pages + custom fields.
+- **Program (doc):** `name`, `trainee`, `coach` + pages + custom fields. Typed names print on the info strip of every page (dates stay blank for handwriting), become the PDF author/subject and lead the suggested file name.
 - **Page:** title (a `/` renders as the red separator), chips, column count (1–14) and unit (يوم / أسبوع / جلسة / custom), base fields, optional notes box and trainee strip.
 - **Exercise row:** logs one of four ways — `default` (page fields), `fields` (its own, e.g. cardio د · كم), `tick` (one checkbox per column), `blank` (free cell).
 - **Group:** superset / circuit / section; `rounds > 0` adds a rounds row; `letters` numbers rows A1, A2 …
