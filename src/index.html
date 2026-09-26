@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>صانع جداول التمرين — Popeye Gym</title>
+<style>
+{{SHEET_CSS}}
+{{APP_CSS}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <img class="brand__logo" id="brand-logo" alt="Popeye Gym">
+      <strong class="brand__title">صانع جداول التمرين</strong>
+    </div>
+    <nav class="toolbar" aria-label="أدوات">
+      <div class="menu" data-menu="templates">
+        <button type="button" class="btn btn--bar" data-menu-trigger aria-expanded="false" aria-label="قوالب" title="أنظمة تدريب جاهزة"><span data-icon="layers"></span><span class="btn__text">قوالب</span></button>
+        <div class="menu__panel"></div>
+      </div>
+      <button type="button" class="btn btn--bar" data-action="open" aria-label="فتح PDF" title="افتح ملف PDF متنزّل من الصانع ده (Ctrl+O)"><span data-icon="open"></span><span class="btn__text">فتح PDF</span></button>
+      <span class="toolbar__sep" aria-hidden="true"></span>
+      <button type="button" class="icon-btn icon-btn--bar" data-action="undo" aria-label="تراجع" title="تراجع (Ctrl+Z)"><span data-icon="undo"></span></button>
+      <button type="button" class="icon-btn icon-btn--bar" data-action="redo" aria-label="إعادة" title="إعادة (Ctrl+Y)"><span data-icon="redo"></span></button>
+      <span class="toolbar__sep" aria-hidden="true"></span>
+      <button type="button" class="btn btn--bar" data-action="reset" aria-label="إعادة ضبط" title="امسح كل حاجة وابدأ من الأول"><span data-icon="reset"></span><span class="btn__text">إعادة ضبط</span></button>
+      <button type="button" class="btn btn--primary btn--download" data-action="download" title="ينزّل ملف PDF للطباعة — وبيحفظ جواه بيانات البرنامج عشان تفتحه تاني (Ctrl+S)">
+        <span data-icon="download"></span><span>تنزيل PDF</span><span class="dirty-dot" aria-hidden="true"></span>
+      </button>
+    </nav>
+  </header>
+
+  <div class="view-switch" role="group" aria-label="العرض">
+    <button type="button" data-action="view" data-view="editor" aria-pressed="true">تعديل</button>
+    <button type="button" data-action="view" data-view="preview" aria-pressed="false">معاينة</button>
+  </div>
+
+  <main class="workspace" data-view="editor">
+    <aside class="editor" id="editor" aria-label="تعديل الجدول"></aside>
+    <section class="preview" id="preview" aria-label="معاينة الطباعة"></section>
+  </main>
+</div>
+
+<div class="print-root" id="print-root"></div>
+<dialog class="dialog" id="dialog"></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="file-input" accept=".pdf,application/pdf" hidden>
+
+<script>{{PDFLIB_JS}}</script>
+<script>{{FONTKIT_JS}}</script>
+<script>{{SORTABLE_JS}}</script>
+<script>
+"use strict";
+const BANNER_SRC = "{{BANNER_SRC}}";
+const FONT_DATA = {{FONT_DATA}};
+{{APP_JS}}
+</script>
+</body>
+</html>

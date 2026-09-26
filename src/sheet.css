@@ -1,0 +1,388 @@
+/* ---------- printed sheet: A4 landscape, RTL ---------- */
+
+.sheet-page {
+  /* sampled from the Popeye Gym banner */
+  --ink: #1a0f0c;
+  --blood: #8a1c14;
+  --red: #d3221a;
+  /* greys stay >= #a0 dark and strokes >= 0.3mm, or office printers wash them out */
+  --rule: #9e9e9e;
+  --rule-row: #878787;
+  --rule-strong: #565656;
+  --muted: #6b5c58;
+  --display: "Lalezar", "Cairo", sans-serif;
+
+  width: 297mm;
+  height: 210mm;
+  padding: 8mm 9mm;
+  display: flex;
+  flex-direction: column;
+  gap: 2.8mm;
+  overflow: hidden;
+  background: #fff;
+  color: var(--ink);
+  font-family: "Cairo", sans-serif;
+  direction: rtl;
+  text-align: right;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.sheet-page *,
+.sheet-page *::before,
+.sheet-page *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* content strings take their direction from their first strong character, like dir="auto":
+   "4 × 6-8" stays 4 × 6-8, Arabic stays RTL; blocks keep the sheet's right alignment */
+.sheet-page .band__word,
+.sheet-page .chips li,
+.sheet-page .day span,
+.sheet-page .subs th,
+.sheet-page .ex__title,
+.sheet-page .ex__detail,
+.sheet-page .ex small em,
+.sheet-page .grp b,
+.sheet-page .grp span,
+.sheet-page .notes h2 > span,
+.sheet-page .of,
+.sheet-page .legend b { unicode-bidi: plaintext; }
+.sheet-page .ex__title,
+.sheet-page .ex__detail { text-align: right; }
+
+/* ---------- brand band ---------- */
+.sheet-page .band {
+  position: relative;
+  flex: none;
+  height: 30mm;
+  border-radius: 3mm;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4mm;
+  padding-inline-start: 9mm;
+  /* vertical stops match the banner's edge so its feathered side blends in */
+  background:
+    repeating-linear-gradient(45deg, rgb(0 0 0 / 0.14) 0 0.25mm, transparent 0.25mm 3.2mm),
+    repeating-linear-gradient(-45deg, rgb(0 0 0 / 0.14) 0 0.25mm, transparent 0.25mm 3.2mm),
+    radial-gradient(ellipse 38% 150% at 88% 120%, rgb(150 28 20 / 0.55) 0%, transparent 70%),
+    linear-gradient(180deg, #10100c 0%, #18100d 17%, #290e0b 42%, #330b08 58%, #3f0907 75%, #3d0a07 100%);
+}
+.sheet-page .band::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 0.9mm;
+  background: var(--red);
+}
+.sheet-page .band__text { position: relative; z-index: 1; min-width: 0; }
+.sheet-page .band h1 {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 34pt;
+  line-height: 1.05;
+  color: #fff;
+  text-shadow: 0 0.6mm 0 rgb(0 0 0 / 0.45);
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+}
+.sheet-page .band__word { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sheet-page .band h1 .sep {
+  display: inline-block;
+  flex: none;
+  width: 1.6mm;
+  height: 0.72em;
+  margin: 0 3.4mm;
+  background: var(--red);
+  transform: skewX(-14deg);
+  box-shadow: 0 0.6mm 0 rgb(0 0 0 / 0.45);
+}
+.sheet-page .chips {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.6mm;
+  margin-top: 2mm;
+}
+.sheet-page .chips li {
+  white-space: nowrap;
+  font-size: 8.5pt;
+  font-weight: 600;
+  line-height: 1;
+  color: #fff;
+  padding: 1.1mm 2.8mm 1.3mm;
+  border-radius: 10mm;
+  border: 0.25mm solid rgb(255 255 255 / 0.28);
+  background: rgb(255 255 255 / 0.08);
+}
+.sheet-page .chips li:first-child { background: var(--red); border-color: var(--red); }
+.sheet-page .band__banner { height: 100%; width: auto; flex: none; }
+
+/* ---------- optional trainee info ---------- */
+.sheet-page .info {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1.25fr 1.25fr 1fr 1fr;
+  gap: 7mm;
+  padding: 0 1mm;
+}
+.sheet-page .field { display: flex; align-items: flex-end; gap: 2.2mm; height: 8mm; }
+.sheet-page .field > span:first-child {
+  font-size: 9pt;
+  font-weight: 700;
+  color: var(--blood);
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.sheet-page .field .line { flex: 1; height: 100%; border-bottom: 0.35mm solid var(--rule-strong); }
+.sheet-page .field .line.date {
+  display: flex;
+  justify-content: space-evenly;
+  align-items: flex-end;
+  padding-bottom: 0.7mm;
+  color: var(--rule);
+  font-size: 10pt;
+  line-height: 1;
+}
+/* Cairo's tall ascent lifts the glyph; nudge the slashes onto the rule */
+.sheet-page .field .line.date i { font-style: normal; transform: translateY(2.2mm); }
+
+/* ---------- log table ---------- */
+.sheet-page .table-wrap {
+  flex: none;
+  border-radius: 2.4mm;
+  overflow: hidden;
+  border: 0.5mm solid var(--ink);
+}
+.sheet-page .log { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.sheet-page .log thead th { color: #fff; font-weight: 700; text-align: center; }
+
+.sheet-page .log .ex-head {
+  background: var(--ink);
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 14pt;
+  text-align: start;
+  padding-inline-start: 4mm;
+  border-bottom: 0.9mm solid var(--red);
+}
+.sheet-page .log .day {
+  height: 7.5mm;
+  background: var(--ink);
+  font-size: 8pt;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.sheet-page .log .day span { font-weight: 600; opacity: 0.75; margin-inline-end: 1mm; }
+.sheet-page .log .day b { font-family: var(--display); font-weight: 400; font-size: 12.5pt; }
+.sheet-page .log thead .ds { border-inline-start: 0.35mm solid #4a3a36; }
+
+.sheet-page .log .subs th {
+  height: 5mm;
+  background: var(--blood);
+  font-size: 7pt;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  border-inline-start: 0.2mm solid #9f453e; /* 18% white over the blood red, kept opaque so both renderers agree */
+}
+.sheet-page .log .subs th.ds { border-inline-start: 0.35mm solid #4a3a36; }
+
+.sheet-page .log tbody tr + tr { border-top: 0.35mm solid var(--rule-row); }
+.sheet-page .log td {
+  border-inline-start: 0.3mm solid var(--rule);
+  text-align: center;
+  vertical-align: middle;
+}
+/* first cell of every day opens a new day block */
+.sheet-page .log td.ds { border-inline-start: 0.5mm solid var(--rule-strong); }
+
+.sheet-page .log .ex {
+  text-align: start;
+  padding: 0 3.2mm;
+  font-weight: 400;
+  border-inline-end: 0.5mm solid var(--rule-strong);
+}
+.sheet-page .log .ex__inner { display: flex; align-items: center; gap: 2.6mm; }
+.sheet-page .log .ex .name {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 10.5pt;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.sheet-page .log .ex .ex__title {
+  max-width: 100%;
+  font-weight: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sheet-page .log .ex small {
+  display: flex;
+  align-items: center;
+  gap: 1.4mm;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  font-size: 8pt;
+  font-weight: 600;
+  color: var(--muted);
+}
+.sheet-page .log .ex small em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--blood);
+  border: 0.3mm solid currentColor;
+  border-radius: 1mm;
+  padding: 0 1.2mm;
+  line-height: 1.35;
+}
+
+.sheet-page .num {
+  flex: none;
+  min-width: 6.4mm;
+  height: 6.4mm;
+  padding: 0.5mm 1mm 0;
+  border-radius: 3.2mm;
+  display: grid;
+  place-items: center;
+  background: var(--red);
+  color: #fff;
+  font-family: var(--display);
+  font-size: 9pt;
+  line-height: 1;
+}
+.sheet-page .num--outline { background: none; color: var(--red); border: 0.35mm solid var(--red); }
+.sheet-page .num--spacer { background: none; }
+
+.sheet-page .log .is-compact .ex .name { font-weight: 600; font-size: 9.5pt; color: #4a3a36; }
+
+/* write-in boxes for rows that log their own fields */
+.sheet-page .log td.mini-cell { position: relative; }
+.sheet-page .mini { position: absolute; inset: 0; display: flex; }
+.sheet-page .mini span {
+  position: relative;
+  min-width: 0;
+  border-inline-start: 0.3mm solid var(--rule);
+}
+.sheet-page .mini span:first-child { border-inline-start: 0; }
+.sheet-page .mini b {
+  position: absolute;
+  inset-block-start: 0.5mm;
+  inset-inline-start: 0.8mm;
+  font-size: 5.8pt;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* groups: supersets, circuits, sections */
+.sheet-page .log tr.in-grp > :first-child { box-shadow: inset -1.3mm 0 0 var(--red); }
+.sheet-page .log tr.grp-head { border-top: 0.5mm solid var(--ink); }
+.sheet-page .log tr.grp-last { border-bottom: 0.5mm solid var(--ink); }
+.sheet-page .log tr.grp-head td { padding-inline: 4.5mm 3mm; text-align: start; border-inline-start: 0; }
+.sheet-page .grp { display: flex; align-items: center; gap: 2mm; white-space: nowrap; overflow: hidden; }
+.sheet-page .grp b { overflow: hidden; text-overflow: ellipsis; }
+.sheet-page .grp b {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 11pt;
+  line-height: 1;
+  color: var(--blood);
+  padding-top: 0.6mm;
+}
+.sheet-page .grp span {
+  font-size: 7.5pt;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink);
+  border: 0.3mm solid var(--rule-strong);
+  border-radius: 10mm;
+  padding: 0.7mm 2.2mm 0.9mm;
+}
+
+.sheet-page .rounds .name { color: var(--blood); }
+.sheet-page .tick {
+  display: inline-block;
+  width: 4mm;
+  height: 4mm;
+  border: 0.4mm solid var(--rule-strong);
+  border-radius: 0.8mm;
+  background: #fff;
+  vertical-align: middle;
+}
+.sheet-page .dots { --dot: 3.4mm; display: inline-flex; gap: 1.2mm; vertical-align: middle; }
+.sheet-page .dot {
+  display: inline-block;
+  width: var(--dot, 3.4mm);
+  height: var(--dot, 3.4mm);
+  border-radius: 50%;
+  border: 0.4mm solid var(--rule-strong);
+  background: #fff;
+  vertical-align: middle;
+}
+.sheet-page .of { font-size: 9pt; font-weight: 700; color: var(--muted); padding-inline-start: 8mm; }
+
+/* ---------- notes ---------- */
+.sheet-page .notes {
+  flex: 1;
+  min-height: 16mm;
+  display: flex;
+  flex-direction: column;
+  border: 0.4mm solid var(--rule);
+  border-radius: 2.4mm;
+  padding: 2mm 4mm 2.5mm;
+}
+.sheet-page .notes h2 {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 12pt;
+  color: var(--blood);
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+}
+.sheet-page .notes h2::before {
+  content: "";
+  width: 1.2mm;
+  height: 0.9em;
+  background: var(--red);
+  transform: skewX(-14deg);
+}
+.sheet-page .notes__lines { flex: 1; min-height: 0; overflow: hidden; }
+.sheet-page .notes__lines i { display: block; height: 6.6mm; border-bottom: 0.35mm solid var(--rule); }
+
+/* ---------- footer ---------- */
+.sheet-page .foot {
+  flex: none;
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6mm;
+  font-size: 7.5pt;
+  color: var(--muted);
+  line-height: 1.2;
+  padding: 0 1mm;
+}
+.sheet-page .foot .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0 0.4mm; }
+.sheet-page .foot b { color: var(--blood); font-weight: 800; margin-inline-end: 0.8mm; }
+.sheet-page .foot i {
+  display: inline-block;
+  width: 1mm;
+  height: 1mm;
+  border-radius: 50%;
+  background: var(--red);
+  margin: 0 2mm;
+  vertical-align: middle;
+}
+.sheet-page .foot__brand { direction: ltr; flex: none; font-weight: 700; letter-spacing: 0.35mm; color: var(--ink); }
+.sheet-page .foot .tick,
+.sheet-page .foot .dot { --dot: 2.6mm; width: 2.6mm; height: 2.6mm; margin-inline-end: 0.8mm; }
