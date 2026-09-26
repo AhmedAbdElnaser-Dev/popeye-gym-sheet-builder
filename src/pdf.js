@@ -402,6 +402,17 @@ function wrapChips(ts, fonts, chips, maxWidth) {
 }
 
 function drawInfo(page, ts, fonts, doc, y) {
+  const fields = infoFields(doc);
+  if (fields.some(([, key]) => infoValue(doc, key))) {
+    // typed: label + value pairs as plain text, right to left, no writing lines
+    const baseline = y + SHEET.trainee - 1.1;
+    let right = SHEET.padX + SHEET.innerWidth - 1;
+    for (const [label, key] of fields) {
+      right -= ts.line(label, { font: fonts.cairo700, size: 9, color: BLOOD, right, baseline }) + 2.2;
+      right -= ts.line(infoValue(doc, key), { font: fonts.cairo700, size: 10, color: INK, right, baseline, maxWidth: 70 }) + 10;
+    }
+    return;
+  }
   const inner = SHEET.innerWidth - 2;
   const fr = (inner - 7 * 3) / 4.5;
   const widths = [1.25 * fr, 1.25 * fr, fr, fr];

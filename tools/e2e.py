@@ -95,6 +95,7 @@ def run():
         page.wait_for_timeout(700)
         check("dates print as DD / MM / YYYY", page.locator(".pv .info", has_text="01 / 10 / 2026").count() == 3 and page.locator(".pv .info", has_text="26 / 11 / 2026").count() == 3)
         check("printed values carry no underline", page.locator(".pv .info .line.is-filled").first.evaluate("el => getComputedStyle(el).borderBottomColor") == "rgba(0, 0, 0, 0)")
+        check("typed strip prints only filled fields", page.locator(".pv").first.locator(".info .field").count() == 4 and page.locator(".pv").first.locator(".info .line.date").count() == 0)
         check("names appear on the sheets", page.locator(".pv .info", has_text="أحمد محمود").count() == 3 and page.locator(".pv .info", has_text="كابتن محمد").count() == 3)
         check("info checkbox reflects the automatic strip", ed.locator("[data-prop=showTrainee]").is_disabled())
 

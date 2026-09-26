@@ -37,6 +37,12 @@ function infoValue(doc, key) {
   return key.endsWith("Date") ? formatDate(doc[key]) : doc[key].trim();
 }
 
+/** Typed values print as plain text with empties dropped; an untouched strip is blank lines for handwriting. */
+function infoFields(doc) {
+  const filled = INFO_FIELDS.filter(([, key]) => infoValue(doc, key));
+  return filled.length ? filled : INFO_FIELDS;
+}
+
 function esc(text) {
   return String(text ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
 }
@@ -281,10 +287,11 @@ function renderBand(sheet) {
 }
 
 function renderInfo(doc) {
-  return `<div class="info">${INFO_FIELDS.map(([label, key]) => {
+  const fields = infoFields(doc);
+  const typed = fields.some(([, key]) => infoValue(doc, key));
+  return `<div class="info${typed ? " info--typed" : ""}">${fields.map(([label, key]) => {
     const value = infoValue(doc, key);
     const blankDate = key.endsWith("Date") && !value;
-    // a printed value needs no writing line under it
     return `<div class="field"><span>${label}</span><span class="line${blankDate ? " date" : ""}${value ? " is-filled" : ""}">${blankDate ? "<i>/</i><i>/</i>" : `<b>${esc(value)}</b>`}</span></div>`;
   }).join("")}</div>`;
 }

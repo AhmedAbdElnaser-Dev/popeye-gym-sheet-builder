@@ -144,6 +144,9 @@
   padding: 0 1mm 0.6mm;
   border-bottom: 0.35mm solid var(--rule-strong);
 }
+.sheet-page .info--typed { display: flex; gap: 10mm; }
+.sheet-page .info--typed .field > span:first-child { line-height: 1; padding-bottom: 0.6mm; }
+.sheet-page .info--typed .line { flex: none; max-width: 70mm; }
 .sheet-page .field .line.is-filled { border-bottom-color: transparent; }
 .sheet-page .field .line b {
   min-width: 0;
