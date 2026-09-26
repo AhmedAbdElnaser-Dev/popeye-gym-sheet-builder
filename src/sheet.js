@@ -292,7 +292,7 @@ function renderInfo(doc) {
   return `<div class="info${typed ? " info--typed" : ""}">${fields.map(([label, key]) => {
     const value = infoValue(doc, key);
     const blankDate = key.endsWith("Date") && !value;
-    return `<div class="field"><span>${label}</span><span class="line${blankDate ? " date" : ""}${value ? " is-filled" : ""}">${blankDate ? "<i>/</i><i>/</i>" : `<b>${esc(value)}</b>`}</span></div>`;
+    return `<div class="field"><span>${label}:</span><span class="line${blankDate ? " date" : ""}${value ? " is-filled" : ""}">${blankDate ? "<i>/</i><i>/</i>" : `<b>${esc(value)}</b>`}</span></div>`;
   }).join("")}</div>`;
 }
 

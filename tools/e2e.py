@@ -95,6 +95,7 @@ def run():
         page.wait_for_timeout(700)
         check("dates print as DD / MM / YYYY", page.locator(".pv .info", has_text="01 / 10 / 2026").count() == 3 and page.locator(".pv .info", has_text="26 / 11 / 2026").count() == 3)
         check("printed values carry no underline", page.locator(".pv .info .line.is-filled").first.evaluate("el => getComputedStyle(el).borderBottomColor") == "rgba(0, 0, 0, 0)")
+        check("labels end with a colon", page.locator(".pv").first.locator(".info .field > span:first-child").first.inner_text().strip() == "اسم المتدرب:")
         check("typed strip prints only filled fields", page.locator(".pv").first.locator(".info .field").count() == 4 and page.locator(".pv").first.locator(".info .line.date").count() == 0)
         check("names appear on the sheets", page.locator(".pv .info", has_text="أحمد محمود").count() == 3 and page.locator(".pv .info", has_text="كابتن محمد").count() == 3)
         check("info checkbox reflects the automatic strip", ed.locator("[data-prop=showTrainee]").is_disabled())
@@ -183,6 +184,8 @@ def run():
         text = doc[0].get_text()
         check("PDF text is real, selectable Arabic", "بار فلات بنش برس" in text)
         check("names printed in the PDF", "أحمد محمود" in text and "كابتن محمد" in text)
+        # extractors reorder an isolated trailing colon; either side of the label is fine
+        check("colon printed after labels in the PDF", "اسم المتدرب:" in text or ":اسم المتدرب" in text)
         check("dates printed in the PDF", "01 / 10 / 2026" in text and "26 / 11 / 2026" in text)
         check("coach becomes the PDF author", "كابتن محمد" in (doc.metadata.get("author") or ""))
         page.locator("[data-action=download]").click()

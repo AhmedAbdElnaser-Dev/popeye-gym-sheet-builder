@@ -408,7 +408,7 @@ function drawInfo(page, ts, fonts, doc, y) {
     const baseline = y + SHEET.trainee - 1.1;
     let right = SHEET.padX + SHEET.innerWidth - 1;
     for (const [label, key] of fields) {
-      right -= ts.line(label, { font: fonts.cairo700, size: 9, color: BLOOD, right, baseline }) + 2.2;
+      right -= ts.line(`${label}:`, { font: fonts.cairo700, size: 9, color: BLOOD, right, baseline }) + 2.2;
       right -= ts.line(infoValue(doc, key), { font: fonts.cairo700, size: 10, color: INK, right, baseline, maxWidth: 70 }) + 10;
     }
     return;
@@ -419,7 +419,7 @@ function drawInfo(page, ts, fonts, doc, y) {
   let right = SHEET.padX + SHEET.innerWidth - 1;
   INFO_FIELDS.forEach(([label, key], index) => {
     const w = widths[index];
-    const labelWidth = ts.line(label, { font: fonts.cairo700, size: 9, color: BLOOD, right, y: y + SHEET.trainee - (9 * 1.2) / PT / 2 });
+    const labelWidth = ts.line(`${label}:`, { font: fonts.cairo700, size: 9, color: BLOOD, right, y: y + SHEET.trainee - (9 * 1.2) / PT / 2 });
     const lineRight = right - labelWidth - 2.2;
     const lineLeft = right - w;
     const value = infoValue(doc, key);
