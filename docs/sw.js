@@ -1,6 +1,6 @@
 // Service worker: the whole app is one HTML file, so cache the shell once and serve it first.
 // VERSION is stamped by build.py from the page's content hash; a new build = a new cache.
-const VERSION = "db043b113f";
+const VERSION = "f584702b70";
 const CACHE = `popeye-sheet-builder-${VERSION}`;
 const SHELL = [
   "./",

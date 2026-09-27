@@ -8,7 +8,7 @@ A single offline HTML page. The trainer picks a training system, edits it, and d
 
 ## Flow
 
-1. **Start screen** — pick a program (Push/Pull/Legs, Upper/Lower, Full Body, Arnold, Bro Split, هجين + كارديو) or a blank page, or open a saved PDF.
+1. **Start screen** — pick a program (Push/Pull/Legs, Upper/Lower, Full Body, Arnold, Bro Split, هجين + كارديو) or a blank page, or open a saved PDF. Full programs live only here; the toolbar «قوالب» menu adds single page templates.
 2. **Edit** — pages, rows, groups, fields; live preview on the left.
 3. **تنزيل PDF** — the red button asks for a file name, then downloads `name.pdf`. That also marks the work as saved.
 4. **فتح PDF** — opens a PDF made by this builder (toolbar button, start screen, or drag a PDF onto the page). Files that aren't from the builder are refused with a message.

@@ -1276,7 +1276,7 @@ details[open] > .panel__head { border-bottom: 1px solid var(--line); border-radi
     </div>
     <nav class="toolbar" aria-label="أدوات">
       <div class="menu" data-menu="templates">
-        <button type="button" class="btn btn--bar" data-menu-trigger aria-expanded="false" aria-label="قوالب" title="أنظمة تدريب جاهزة"><span data-icon="layers"></span><span class="btn__text">قوالب</span></button>
+        <button type="button" class="btn btn--bar" data-menu-trigger aria-expanded="false" aria-label="قوالب" title="قوالب صفحات جاهزة"><span data-icon="layers"></span><span class="btn__text">قوالب</span></button>
         <div class="menu__panel"></div>
       </div>
       <button type="button" class="btn btn--bar" data-action="open" aria-label="فتح PDF" title="افتح ملف PDF متنزّل من الصانع ده (Ctrl+O)"><span data-icon="open"></span><span class="btn__text">فتح PDF</span></button>
@@ -4395,9 +4395,7 @@ function menuItem(action, key, title, hint) {
 }
 
 function renderTemplatesMenu() {
-  return `<div class="menu__section"><h3>نظام تدريب كامل${hasPages() ? " (بيستبدل الحالي)" : ""}</h3>
-      ${PROGRAM_PRESETS.map((preset) => menuItem("program-load", preset.key, preset.title, preset.hint)).join("")}</div>
-    <div class="menu__section"><h3>ضيف صفحة${hasPages() ? " بعد الحالية" : ""}</h3>
+  return `<div class="menu__section"><h3>قوالب الصفحات${hasPages() ? " — بتتضاف بعد الصفحة الحالية" : ""}</h3>
       ${PAGE_PRESETS.map((preset) => menuItem("page-add", preset.key, preset.title, preset.hint)).join("")}</div>`;
 }
 

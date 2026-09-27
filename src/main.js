@@ -26,9 +26,7 @@ function menuItem(action, key, title, hint) {
 }
 
 function renderTemplatesMenu() {
-  return `<div class="menu__section"><h3>نظام تدريب كامل${hasPages() ? " (بيستبدل الحالي)" : ""}</h3>
-      ${PROGRAM_PRESETS.map((preset) => menuItem("program-load", preset.key, preset.title, preset.hint)).join("")}</div>
-    <div class="menu__section"><h3>ضيف صفحة${hasPages() ? " بعد الحالية" : ""}</h3>
+  return `<div class="menu__section"><h3>قوالب الصفحات${hasPages() ? " — بتتضاف بعد الصفحة الحالية" : ""}</h3>
       ${PAGE_PRESETS.map((preset) => menuItem("page-add", preset.key, preset.title, preset.hint)).join("")}</div>`;
 }
 
