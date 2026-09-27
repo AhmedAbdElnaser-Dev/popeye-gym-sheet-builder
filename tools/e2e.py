@@ -306,13 +306,25 @@ def run():
         blank.save(str(foreign))
         page.locator("#file-input").set_input_files(str(foreign))
         page.wait_for_timeout(800)
-        check("foreign PDF refused", "مش متنزّل من صانع الجداول" in page.locator("#toast").inner_text())
+        check("foreign PDF refused", "مش من صانع الجداول" in page.locator("#toast").inner_text())
         junk = SHOTS / "junk.pdf"
         junk.write_bytes(b"%PDF-1.4 not really a pdf")
         page.locator("#file-input").set_input_files(str(junk))
         page.wait_for_timeout(800)
         check("junk file refused", "PDF" in page.locator("#toast").inner_text())
         check("program still intact after refusals", pages_in_preview(page) == 3)
+
+        # legacy .json export from the earlier version opens too
+        legacy = SHOTS / "legacy.json"
+        legacy.write_text(page.evaluate("JSON.stringify({ v: 1, customFields: [], pages: buildProgram(programPreset('upper-lower')).pages })"), encoding="utf-8")
+        page.locator("#file-input").set_input_files(str(legacy))
+        page.wait_for_timeout(800)
+        if page.locator("#dialog[open]").count():
+            page.locator("#dialog button[value=ok]").click()
+            page.wait_for_timeout(500)
+        check("legacy JSON export opens", pages_in_preview(page) == 2 and "العلوي" in ed.locator(".tab").first.inner_text())
+        page.locator("[data-action=undo]").click()
+        page.wait_for_timeout(400)
 
         # session: survives reload in the same tab, gone in a new tab
         page.reload()

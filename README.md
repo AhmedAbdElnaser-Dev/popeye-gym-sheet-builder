@@ -11,7 +11,7 @@ A single offline HTML page. The trainer picks a training system, edits it, and d
 1. **Start screen** — pick a program (Push/Pull/Legs, Upper/Lower, Full Body, Arnold, Bro Split, هجين + كارديو) or a blank page, or open a saved PDF. Full programs live only here; the toolbar «قوالب» menu adds single page templates.
 2. **Edit** — pages, rows, groups, fields; live preview on the left.
 3. **تنزيل PDF** — the red button asks for a file name, then downloads `name.pdf`. That also marks the work as saved.
-4. **فتح PDF** — opens a PDF made by this builder (toolbar button, start screen, or drag a PDF onto the page). Files that aren't from the builder are refused with a message.
+4. **فتح PDF** — opens a PDF made by this builder (toolbar button, start screen, or drag a PDF onto the page); `.json` exports from the builder's earlier version open too. Files that aren't from the builder are refused with a message.
 5. **إعادة ضبط** — wipes everything and returns to the start screen.
 
 **Offline / install:** the hosted page is a PWA. After the first visit a service worker (`docs/sw.js`) caches the app, so the link opens with no internet; on a phone, "Add to Home screen" installs it with its own icon. An amber «أوفلاين» badge shows next to the title while the network is down. When a new build is published, open tabs get a «تحديث» toast; tapping it swaps to the new version (the current program survives the reload). The single-file `dist/` download has no service worker — it is already offline by nature.

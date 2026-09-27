@@ -1275,7 +1275,7 @@ details[open] > .panel__head { border-bottom: 1px solid var(--line); border-radi
         <button type="button" class="btn btn--bar" data-menu-trigger aria-expanded="false" aria-label="قوالب" title="قوالب صفحات جاهزة"><span data-icon="layers"></span><span class="btn__text">قوالب</span></button>
         <div class="menu__panel"></div>
       </div>
-      <button type="button" class="btn btn--bar" data-action="open" aria-label="فتح PDF" title="افتح ملف PDF متنزّل من الصانع ده (Ctrl+O)"><span data-icon="open"></span><span class="btn__text">فتح PDF</span></button>
+      <button type="button" class="btn btn--bar" data-action="open" aria-label="فتح PDF" title="افتح ملف PDF متنزّل من الصانع ده — أو ملف .json من نسخته القديمة (Ctrl+O)"><span data-icon="open"></span><span class="btn__text">فتح PDF</span></button>
       <span class="toolbar__sep" aria-hidden="true"></span>
       <button type="button" class="icon-btn icon-btn--bar" data-action="undo" aria-label="تراجع" title="تراجع (Ctrl+Z)"><span data-icon="undo"></span></button>
       <button type="button" class="icon-btn icon-btn--bar" data-action="redo" aria-label="إعادة" title="إعادة (Ctrl+Y)"><span data-icon="redo"></span></button>
@@ -1301,7 +1301,7 @@ details[open] > .panel__head { border-bottom: 1px solid var(--line); border-radi
 <div class="print-root" id="print-root"></div>
 <dialog class="dialog" id="dialog"></dialog>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-<input type="file" id="file-input" accept=".pdf,application/pdf" hidden>
+<input type="file" id="file-input" accept=".pdf,.json,application/pdf,application/json" hidden>
 
 <script>!function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"function"==typeof define&&define.amd?define(["exports"],e):e((t=t||self).PDFLib={})}(this,(function(t){"use strict";
 /*! *****************************************************************************
@@ -4373,7 +4373,7 @@ const DEFAULT_FILENAME = "برنامج تمرين";
 const FILE_ERRORS = {
   "not-pdf": "الملف ده مش PDF سليم.",
   encrypted: "الملف ده محمي بكلمة سر — الصانع مش بيطلّع ملفات محمية، فده مش ملف منه.",
-  "not-ours": "الملف ده مش متنزّل من صانع الجداول — مفيش بيانات برنامج جواه.",
+  "not-ours": "الملف ده مش من صانع الجداول — مفيش بيانات برنامج جواه.",
   corrupt: "بيانات البرنامج جوه الملف بايظة أو اتعدلت.",
   newer: "الملف ده متعمول بنسخة أحدث من الصانع.",
 };
@@ -4436,7 +4436,26 @@ async function resetAll() {
   showToast("اتمسح كل حاجة — اختار نظام تدريب أو صفحة فاضية");
 }
 
-// ---------- open PDF ----------
+// ---------- open a saved program: a PDF from this app, or a .json export from its earlier version ----------
+
+async function readProgramFile(file) {
+  if (!/\.json$/i.test(file.name) && file.type !== "application/json") {
+    return readProgramFromPdf(new Uint8Array(await file.arrayBuffer()));
+  }
+  let raw;
+  try {
+    raw = JSON.parse(await file.text());
+  } catch {
+    throw new ProgramFileError("corrupt");
+  }
+  const candidate = raw && Array.isArray(raw.pages) ? raw : raw?.doc;
+  if (!candidate || !Array.isArray(candidate.pages)) throw new ProgramFileError("not-ours");
+  try {
+    return { doc: normalizeDoc(candidate) };
+  } catch {
+    throw new ProgramFileError("corrupt");
+  }
+}
 
 async function importPdf(file) {
   if (!file) return;
@@ -4451,7 +4470,7 @@ async function importPdf(file) {
   showToast(`جارٍ فتح «${iso(file.name)}»…`);
   let program;
   try {
-    program = await readProgramFromPdf(new Uint8Array(await file.arrayBuffer()));
+    program = await readProgramFile(file);
   } catch (error) {
     showToast(FILE_ERRORS[error.code] || "مقدرتش أقرأ الملف ده.");
     return;

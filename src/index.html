@@ -26,7 +26,7 @@
         <button type="button" class="btn btn--bar" data-menu-trigger aria-expanded="false" aria-label="قوالب" title="قوالب صفحات جاهزة"><span data-icon="layers"></span><span class="btn__text">قوالب</span></button>
         <div class="menu__panel"></div>
       </div>
-      <button type="button" class="btn btn--bar" data-action="open" aria-label="فتح PDF" title="افتح ملف PDF متنزّل من الصانع ده (Ctrl+O)"><span data-icon="open"></span><span class="btn__text">فتح PDF</span></button>
+      <button type="button" class="btn btn--bar" data-action="open" aria-label="فتح PDF" title="افتح ملف PDF متنزّل من الصانع ده — أو ملف .json من نسخته القديمة (Ctrl+O)"><span data-icon="open"></span><span class="btn__text">فتح PDF</span></button>
       <span class="toolbar__sep" aria-hidden="true"></span>
       <button type="button" class="icon-btn icon-btn--bar" data-action="undo" aria-label="تراجع" title="تراجع (Ctrl+Z)"><span data-icon="undo"></span></button>
       <button type="button" class="icon-btn icon-btn--bar" data-action="redo" aria-label="إعادة" title="إعادة (Ctrl+Y)"><span data-icon="redo"></span></button>
@@ -52,7 +52,7 @@
 <div class="print-root" id="print-root"></div>
 <dialog class="dialog" id="dialog"></dialog>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-<input type="file" id="file-input" accept=".pdf,application/pdf" hidden>
+<input type="file" id="file-input" accept=".pdf,.json,application/pdf,application/json" hidden>
 
 <script>{{PDFLIB_JS}}</script>
 <script>{{FONTKIT_JS}}</script>

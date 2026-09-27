@@ -8,7 +8,7 @@ const DEFAULT_FILENAME = "برنامج تمرين";
 const FILE_ERRORS = {
   "not-pdf": "الملف ده مش PDF سليم.",
   encrypted: "الملف ده محمي بكلمة سر — الصانع مش بيطلّع ملفات محمية، فده مش ملف منه.",
-  "not-ours": "الملف ده مش متنزّل من صانع الجداول — مفيش بيانات برنامج جواه.",
+  "not-ours": "الملف ده مش من صانع الجداول — مفيش بيانات برنامج جواه.",
   corrupt: "بيانات البرنامج جوه الملف بايظة أو اتعدلت.",
   newer: "الملف ده متعمول بنسخة أحدث من الصانع.",
 };
@@ -71,7 +71,26 @@ async function resetAll() {
   showToast("اتمسح كل حاجة — اختار نظام تدريب أو صفحة فاضية");
 }
 
-// ---------- open PDF ----------
+// ---------- open a saved program: a PDF from this app, or a .json export from its earlier version ----------
+
+async function readProgramFile(file) {
+  if (!/\.json$/i.test(file.name) && file.type !== "application/json") {
+    return readProgramFromPdf(new Uint8Array(await file.arrayBuffer()));
+  }
+  let raw;
+  try {
+    raw = JSON.parse(await file.text());
+  } catch {
+    throw new ProgramFileError("corrupt");
+  }
+  const candidate = raw && Array.isArray(raw.pages) ? raw : raw?.doc;
+  if (!candidate || !Array.isArray(candidate.pages)) throw new ProgramFileError("not-ours");
+  try {
+    return { doc: normalizeDoc(candidate) };
+  } catch {
+    throw new ProgramFileError("corrupt");
+  }
+}
 
 async function importPdf(file) {
   if (!file) return;
@@ -86,7 +105,7 @@ async function importPdf(file) {
   showToast(`جارٍ فتح «${iso(file.name)}»…`);
   let program;
   try {
-    program = await readProgramFromPdf(new Uint8Array(await file.arrayBuffer()));
+    program = await readProgramFile(file);
   } catch (error) {
     showToast(FILE_ERRORS[error.code] || "مقدرتش أقرأ الملف ده.");
     return;
