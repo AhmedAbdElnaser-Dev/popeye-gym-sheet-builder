@@ -308,6 +308,41 @@ function bindAppEvents() {
   new ResizeObserver(fitPreview).observe(previewRoot());
 }
 
+// ---------- offline: service worker for the hosted build, network badge everywhere ----------
+
+function updateNetworkBadge() {
+  document.getElementById("net-badge").hidden = navigator.onLine;
+}
+
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator) || !/^https?:$/.test(location.protocol)) return;
+  const firstVisit = !navigator.serviceWorker.controller;
+  let reloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloading || firstVisit) return;
+    reloading = true;
+    location.reload();
+  });
+
+  navigator.serviceWorker.register("./sw.js").then((registration) => {
+    const offerUpdate = (worker) => showToast("في نسخة أحدث من الصانع", { label: "تحديث", run: () => worker.postMessage("skip-waiting") });
+    if (registration.waiting && navigator.serviceWorker.controller) offerUpdate(registration.waiting);
+    registration.addEventListener("updatefound", () => {
+      const worker = registration.installing;
+      worker?.addEventListener("statechange", () => {
+        if (worker.state === "installed" && navigator.serviceWorker.controller) offerUpdate(worker);
+      });
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") registration.update().catch(() => {});
+    });
+  }).catch(() => {});
+
+  if (firstVisit) {
+    navigator.serviceWorker.ready.then(() => showToast("الصانع بقى شغال من غير نت على الجهاز ده — وتقدر تضيفه للشاشة الرئيسية"));
+  }
+}
+
 /** The same font bytes feed the screen (FontFace) and the PDF (pdf-lib). */
 async function loadFonts() {
   const faces = Object.entries(FONT_SPECS).map(([key, [family, weight]]) => new FontFace(family, fontBytes(key), { weight: String(weight) }));
@@ -343,6 +378,11 @@ async function boot() {
   fitPreview();
   updateChrome();
   setView("editor");
+
+  window.addEventListener("online", updateNetworkBadge);
+  window.addEventListener("offline", updateNetworkBadge);
+  updateNetworkBadge();
+  registerServiceWorker();
 }
 
 boot();

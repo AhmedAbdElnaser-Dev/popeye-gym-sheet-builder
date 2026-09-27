@@ -14,6 +14,8 @@ A single offline HTML page. The trainer picks a training system, edits it, and d
 4. **فتح PDF** — opens a PDF made by this builder (toolbar button, start screen, or drag a PDF onto the page). Files that aren't from the builder are refused with a message.
 5. **إعادة ضبط** — wipes everything and returns to the start screen.
 
+**Offline / install:** the hosted page is a PWA. After the first visit a service worker (`docs/sw.js`) caches the app, so the link opens with no internet; on a phone, "Add to Home screen" installs it with its own icon. An amber «أوفلاين» badge shows next to the title while the network is down. When a new build is published, open tabs get a «تحديث» toast; tapping it swaps to the new version (the current program survives the reload). The single-file `dist/` download has no service worker — it is already offline by nature.
+
 Work is kept per browser tab (`sessionStorage`): it survives a reload, not closing the tab. An amber dot on the download button means there are changes that haven't been downloaded yet, and closing the tab asks for confirmation in that state.
 
 ## How a sheet is modelled
@@ -43,6 +45,7 @@ python -m venv .venv
 .venv/Scripts/python -m pip install playwright fonttools brotli pillow pymupdf
 .venv/Scripts/python build.py         # src/ + assets/ -> dist/Popeye_Gym_Sheet_Builder.html
 .venv/Scripts/python tools/e2e.py     # drives the built page in Edge: editing, download, re-open, reset, session
+.venv/Scripts/python tools/offline_check.py   # serves docs/ over HTTP: service worker, offline reload, manifest, icons
 .venv/Scripts/python tools/compare.py ppl   # HTML preview vs generated PDF, side by side, per page
 node tools/bidi_check.mjs             # bidi ordering cases (incl. N0 bracket pairs)
 .venv/Scripts/python tools/bidi_oracle.py "نص"   # browser as referee for a string's visual order
@@ -50,4 +53,5 @@ node tools/bidi_check.mjs             # bidi ordering cases (incl. N0 bracket pa
 
 - **`src/` in load order:** `model.js` (data, factories, normalisation) → `presets.js` (catalog) → `sheet.js` (layout math + HTML renderer) → `bidi.js` → `pdf.js` → `store.js` (undo, per-tab session) → `ui.js` (icons, toasts, menus, dialogs) → `editor.js` → `preview.js` → `main.js`.
 - **Styles:** `sheet.css` is the printed design; `app.css` the builder UI. When you change a sheet size in one place, change it in `SHEET` (sheet.js) and `pdf.js` too.
+- **PWA files:** `src/sw.js` (version stamped from the page hash at build), `src/manifest.webmanifest`, icons drawn by `build.py` into `docs/icons/`. Only `docs/` gets them; `dist/` is the plain single file.
 - **Build:** subsets the fonts with fontTools (hinting stripped — pdf-lib's own subsetter chokes on Lalezar's instructions), inlines pdf-lib, fontkit, SortableJS and the banner. Output is ~2 MB and fully offline.

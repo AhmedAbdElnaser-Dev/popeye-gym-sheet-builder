@@ -1,17 +1,28 @@
 """Bundles src/ + assets/ into one offline HTML file: dist/Popeye_Gym_Sheet_Builder.html."""
 import base64
+import hashlib
 import io
 import json
 from pathlib import Path
 
 from fontTools import subset
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).parent
 SRC = ROOT / "src"
 ASSETS = ROOT / "assets"
 OUT = ROOT / "dist" / "Popeye_Gym_Sheet_Builder.html"
-PAGES_OUT = ROOT / "docs" / "index.html"  # what GitHub Pages serves
+PAGES_DIR = ROOT / "docs"  # what GitHub Pages serves: the page plus its PWA files
+PAGES_OUT = PAGES_DIR / "index.html"
+
+# only the hosted build gets a manifest and service worker; file:// can't run either
+PWA_HEAD = """<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Popeye Sheets">"""
+ICON_BG = "#17110f"
+ICON_RED = "#d3221a"
 
 # concatenation order matters: later files use globals from earlier ones
 JS_FILES = ["model.js", "presets.js", "sheet.js", "bidi.js", "pdf.js", "store.js", "ui.js", "editor.js", "preview.js", "main.js"]
@@ -61,6 +72,28 @@ def read(path):
     return path.read_text(encoding="utf-8")
 
 
+def draw_icon(size, rounded, pad):
+    """Dark tile, red baseline bar, bold P — the favicon at app-icon size."""
+    image = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    draw.rounded_rectangle([0, 0, size - 1, size - 1], radius=int(size * 0.22) if rounded else 0, fill=ICON_BG)
+    inset = int(size * pad)
+    box_bottom = size - inset
+    bar = int(size * 0.08)
+    draw.rectangle([inset, box_bottom - bar - int(size * 0.06), size - inset - 1, box_bottom - int(size * 0.06)], fill=ICON_RED)
+    font = ImageFont.truetype(str(ASSETS / "fonts" / "Cairo-800.ttf"), int(size * (0.62 - pad)))
+    draw.text((size / 2, (inset + box_bottom - bar - int(size * 0.06)) / 2), "P", font=font, fill="white", anchor="mm")
+    return image
+
+
+def write_icons(folder):
+    folder.mkdir(parents=True, exist_ok=True)
+    draw_icon(192, True, 0).save(folder / "icon-192.png")
+    draw_icon(512, True, 0).save(folder / "icon-512.png")
+    draw_icon(512, False, 0.12).save(folder / "maskable-512.png")
+    draw_icon(180, False, 0.06).save(folder / "apple-touch-icon.png")
+
+
 def build():
     html = read(SRC / "index.html")
     replacements = {
@@ -75,10 +108,19 @@ def build():
     }
     for token, value in replacements.items():
         html = html.replace(token, value, 1)
-    for target in (OUT, PAGES_OUT):
-        target.parent.mkdir(exist_ok=True)
-        target.write_text(html, encoding="utf-8")
-    print(f"{OUT} ({OUT.stat().st_size / 1024:.0f} KB) + {PAGES_OUT.relative_to(ROOT)}")
+
+    OUT.parent.mkdir(exist_ok=True)
+    OUT.write_text(html.replace("{{PWA_HEAD}}", ""), encoding="utf-8")
+
+    hosted = html.replace("{{PWA_HEAD}}", PWA_HEAD)
+    version = hashlib.sha1(hosted.encode("utf-8")).hexdigest()[:10]
+    PAGES_DIR.mkdir(exist_ok=True)
+    PAGES_OUT.write_text(hosted, encoding="utf-8")
+    (PAGES_DIR / "sw.js").write_text(read(SRC / "sw.js").replace("{{VERSION}}", version), encoding="utf-8")
+    (PAGES_DIR / "manifest.webmanifest").write_text(read(SRC / "manifest.webmanifest"), encoding="utf-8")
+    (PAGES_DIR / ".nojekyll").write_text("", encoding="utf-8")
+    write_icons(PAGES_DIR / "icons")
+    print(f"{OUT} ({OUT.stat().st_size / 1024:.0f} KB) + docs/ (sw version {version})")
 
 
 if __name__ == "__main__":
